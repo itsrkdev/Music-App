@@ -70,6 +70,11 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
+app.get("/", (req, res) => {
+  res.send("server working");
+});
+
+
 // ---------- Stream Endpoint ----------
 app.get('/api/stream', async (req, res) => {
   const songId = (req.query.id || '').toString().trim();
