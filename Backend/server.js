@@ -4,16 +4,21 @@ import axios from 'axios';
 import 'dotenv/config';
 
 const app = express();
-app.use(cors());
 
-// Backup API endpoints list (agar ek block ho toh doosra chale)
+// CORS for all origins (Netlify, Vercel, Localhost)
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Backup API endpoints list
 const API_ENDPOINTS = [
   'https://saavn.dev/api',
   'https://jiosaavn-api-beta-three.vercel.app/api',
   'https://saavn.me'
 ];
 
-// Helper function: working endpoint dhoondhne ke liye
 const fetchWithFallback = async (path, params) => {
   for (const baseUrl of API_ENDPOINTS) {
     try {
@@ -36,7 +41,6 @@ app.get('/api/search', async (req, res) => {
     const results = data?.data?.results || data?.results || [];
 
     const songs = results.map((song) => {
-      // Stream URL extract
       let downloadUrl = '';
       if (Array.isArray(song.downloadUrl)) {
         downloadUrl = song.downloadUrl[song.downloadUrl.length - 1]?.url || song.downloadUrl[0]?.url;
@@ -44,7 +48,6 @@ app.get('/api/search', async (req, res) => {
         downloadUrl = song.media_url;
       }
 
-      // Image extract
       let image = '';
       if (Array.isArray(song.image)) {
         image = song.image[song.image.length - 1]?.url || song.image[0]?.url;
@@ -64,7 +67,7 @@ app.get('/api/search', async (req, res) => {
     res.json(songs);
   } catch (err) {
     console.error("Search Error:", err.message);
-    res.status(500).json({ error: 'Office network blocked all streaming sources.' });
+    res.status(500).json({ error: 'Search failed' });
   }
 });
 
@@ -96,4 +99,4 @@ app.get('/api/stream', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
