@@ -304,7 +304,7 @@ function App() {
 
       <header className="app-header">
         <Music size={26} />
-        <span>VibeMusic App</span>
+        <span>RkMusic App</span>
       </header>
 
       {/* Category Filters */}
