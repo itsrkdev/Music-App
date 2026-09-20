@@ -1,126 +1,138 @@
 import express from 'express';
 import cors from 'cors';
-import axios from 'axios';
 import 'dotenv/config';
+import play from 'play-dl';
+import { Readable } from 'node:stream';
 
 const app = express();
+app.use(cors({ exposedHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length'] }));
 
-// Enable CORS for all incoming requests
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+const cache = new Map();       // query -> { time, data }
+const streamCache = new Map(); // videoId -> { time, url, mime }
+const TTL = 60 * 60 * 1000;    // 1 hour
+const UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 
-// Multi-fallback Working JioSaavn & Alternative Endpoints
-const API_ENDPOINTS = [
-  'https://saavn.dev/api',
-  'https://jiosavan-api.vercel.app/api',
-  'https://jiosaavn-api-beta-three.vercel.app/api',
-  'https://saavn.me/api'
-];
+const decode = (s = '') =>
+  s
+    .replace(/&amp;/g, '&')
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
 
-// Helper Function with longer timeout and fallback handling
-const fetchWithFallback = async (path, params) => {
-  let lastError = null;
-  
-  for (const baseUrl of API_ENDPOINTS) {
-    try {
-      const url = `${baseUrl}${path}`;
-      console.log(`Fetching from: ${url}`);
-      const res = await axios.get(url, { params, timeout: 15000 });
-      
-      if (res.data && (res.data.data || res.data.results || res.data.status === 'SUCCESS')) {
-        return res.data;
-      }
-    } catch (err) {
-      console.log(`Failed endpoint ${baseUrl}: ${err.message}`);
-      lastError = err;
-    }
-  }
-  throw lastError || new Error('All music sources failed');
-};
+// ---------- Health check (Render wake-up / keep-alive ke liye) ----------
+app.get('/', (_req, res) => res.send('OK'));
+app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 // ---------- Search Endpoint ----------
 app.get('/api/search', async (req, res) => {
-  const q = (req.query.q || 'Bollywood Hits').toString().trim();
+  const q = (req.query.q || '').toString().trim();
+  if (!q) return res.json([]);
+
+  if (!process.env.YT_KEY) {
+    return res.status(500).json({ error: 'Server me YT_KEY set nahi hai.' });
+  }
+
+  const hit = cache.get(q);
+  if (hit && Date.now() - hit.time < TTL) return res.json(hit.data);
 
   try {
-    const data = await fetchWithFallback('/search/songs', { query: q, limit: 20 });
-    
-    // Normalize API Response structure across different instances
-    const results = data?.data?.results || data?.data || data?.results || [];
+    const url =
+      'https://www.googleapis.com/youtube/v3/search' +
+      `?part=snippet&type=video&videoCategoryId=10&videoEmbeddable=true&maxResults=20` +
+      `&q=${encodeURIComponent(q + ' song')}&key=${process.env.YT_KEY}`;
 
-    if (!Array.isArray(results) || results.length === 0) {
-      return res.json([]);
+    const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    const data = await r.json();
+    if (!r.ok) {
+      return res
+        .status(r.status)
+        .json({ error: data.error?.message || 'YouTube API error' });
     }
 
-    const songs = results.map((song) => {
-      // Audio Link Extraction
-      let downloadUrl = '';
-      if (Array.isArray(song.downloadUrl) && song.downloadUrl.length > 0) {
-        downloadUrl = song.downloadUrl[song.downloadUrl.length - 1]?.url || song.downloadUrl[0]?.url;
-      } else if (typeof song.downloadUrl === 'string') {
-        downloadUrl = song.downloadUrl;
-      } else if (song.media_url) {
-        downloadUrl = song.media_url;
-      }
+    const songs = (data.items || []).map((i) => ({
+      id: i.id.videoId,
+      name: decode(i.snippet.title),
+      artist: decode(i.snippet.channelTitle),
+      image: i.snippet.thumbnails?.medium?.url || i.snippet.thumbnails?.default?.url,
+    }));
 
-      // Thumbnail Extraction
-      let image = '';
-      if (Array.isArray(song.image) && song.image.length > 0) {
-        image = song.image[song.image.length - 1]?.url || song.image[0]?.url;
-      } else if (typeof song.image === 'string') {
-        image = song.image;
-      }
-
-      return {
-        id: song.id,
-        name: song.name ? song.name.replace(/&quot;/g, '"').replace(/&#039;/g, "'") : (song.song || 'Unknown Track'),
-        artist: song.primaryArtists || song.singers || song.artist || 'Unknown Artist',
-        image: image || 'https://via.placeholder.com/300x300?text=Music',
-        streamUrl: downloadUrl
-      };
-    });
-
-    return res.json(songs);
+    cache.set(q, { time: Date.now(), data: songs });
+    res.json(songs);
   } catch (err) {
-    console.error("Search Error Detail:", err.message);
-    return res.status(500).json({ error: 'Server connects, but music provider APIs are down or timing out.' });
+    console.error('Search Error:', err);
+    res.status(500).json({ error: 'Search failed' });
   }
 });
 
-// ---------- Stream Endpoint ----------
+// ---------- Direct audio URL nikalna ----------
+async function getAudioInfo(videoId, force = false) {
+  const cached = streamCache.get(videoId);
+  if (!force && cached && Date.now() - cached.time < TTL) return cached;
+
+  const info = await play.video_info(`https://www.youtube.com/watch?v=${videoId}`);
+  const audio = info.format.filter((f) => f.mimeType && f.mimeType.startsWith('audio') && f.url);
+  if (!audio.length) throw new Error('NO_AUDIO');
+
+  // m4a (audio/mp4) sabhi browsers me chalta hai, isliye pehle wo, warna highest bitrate
+  const byBitrate = (a, b) => (b.bitrate || 0) - (a.bitrate || 0);
+  const mp4 = audio.filter((f) => f.mimeType.includes('audio/mp4')).sort(byBitrate);
+  const best = mp4[0] || audio.sort(byBitrate)[0];
+
+  const entry = { time: Date.now(), url: best.url, mime: best.mimeType.split(';')[0] };
+  streamCache.set(videoId, entry);
+  return entry;
+}
+
+async function fetchUpstream(url, range) {
+  const headers = { 'User-Agent': UA };
+  if (range) headers.Range = range;
+  return fetch(url, { headers });
+}
+
+// ---------- Audio Stream Endpoint (proxy: browser ko audio yahin se milega) ----------
 app.get('/api/stream', async (req, res) => {
-  const songId = (req.query.id || '').toString().trim();
-  if (!songId) return res.status(400).json({ error: 'Song ID required' });
+  const videoId = (req.query.id || '').toString().trim();
+  if (!/^[\w-]{11}$/.test(videoId)) {
+    return res.status(400).json({ error: 'Valid Video ID chahiye.' });
+  }
 
   try {
-    const data = await fetchWithFallback('/songs', { ids: songId });
-    const songData = data?.data?.[0] || data?.data || data?.[0];
+    let entry = await getAudioInfo(videoId);
+    let upstream = await fetchUpstream(entry.url, req.headers.range);
 
-    if (songData) {
-      let streamUrl = '';
-      if (Array.isArray(songData.downloadUrl) && songData.downloadUrl.length > 0) {
-        streamUrl = songData.downloadUrl[songData.downloadUrl.length - 1]?.url;
-      } else if (songData.media_url) {
-        streamUrl = songData.media_url;
-      }
-
-      if (streamUrl) return res.json({ url: streamUrl });
+    // URL expire / IP mismatch ho to ek baar fresh URL lekar retry
+    if (!upstream.ok) {
+      streamCache.delete(videoId);
+      entry = await getAudioInfo(videoId, true);
+      upstream = await fetchUpstream(entry.url, req.headers.range);
     }
-    
-    return res.status(404).json({ error: 'Audio stream not found' });
-  } catch (err) {
-    console.error("Stream Fetch Error:", err.message);
-    return res.status(500).json({ error: 'Failed to fetch audio stream' });
-  }
-});
 
-// Root route for Health Check
-app.get('/', (req, res) => {
-  res.send('Vibe Music Backend is running live!');
+    if (!upstream.ok || !upstream.body) {
+      console.error('Upstream status:', upstream.status);
+      return res.status(502).json({ error: `YouTube ne audio dene se mana kiya (${upstream.status}).` });
+    }
+
+    res.status(upstream.status); // 200 ya 206 (seek ke liye)
+    res.setHeader('Content-Type', upstream.headers.get('content-type') || entry.mime);
+    res.setHeader('Accept-Ranges', 'bytes');
+    const len = upstream.headers.get('content-length');
+    const range = upstream.headers.get('content-range');
+    if (len) res.setHeader('Content-Length', len);
+    if (range) res.setHeader('Content-Range', range);
+
+    const body = Readable.fromWeb(upstream.body);
+    req.on('close', () => body.destroy());
+    body.on('error', () => res.end());
+    body.pipe(res);
+  } catch (err) {
+    console.error('Stream Error:', err);
+    if (res.headersSent) return res.end();
+    if (err.message === 'NO_AUDIO') return res.status(404).json({ error: 'Audio stream nahi mila.' });
+    return res.status(500).json({ error: 'Audio stream extract karne me dikkat hui.' });
+  }
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
