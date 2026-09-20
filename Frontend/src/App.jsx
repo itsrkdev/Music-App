@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import { Play, Pause, Search, Music, SkipBack, SkipForward, Volume2, VolumeX, Loader2 } from 'lucide-react';
+import { 
+  Play, Pause, Search, Music, SkipBack, SkipForward, 
+  Volume2, VolumeX, Loader2, ChevronDown 
+} from 'lucide-react';
 import './App.css';
 
 const API = (import.meta.env.VITE_API_URL || 'https://music-app-mxgg.onrender.com').replace(/\/+$/, '');
@@ -12,28 +15,23 @@ const PLACEHOLDER =
   );
 
 const CATEGORIES = ['Bollywood Hits', 'Hindi Songs', 'Bhojpuri Hits', 'English Songs', 'Pawan Singh', 'Arijit Singh'];
-
-const PLAYER_BLOCKED_MSG =
-  'YouTube player load nahi hua. Network/firewall ya adblock check karein (dusra network try karein).';
+const PLAYER_BLOCKED_MSG = 'YouTube player load nahi hua. Network/firewall ya adblock check karein.';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Render free tier cold start ke liye timeout + retry
 async function searchWithRetry(q, onWaking, tries = 3) {
   for (let i = 0; i < tries; i++) {
     try {
       const { data } = await axios.get(`${API}/api/search`, { params: { q }, timeout: 60000 });
       return data;
     } catch (err) {
-      if (err.response) throw err;
-      if (i === tries - 1) throw err;
+      if (err.response || i === tries - 1) throw err;
       onWaking();
       await sleep(4000);
     }
   }
 }
 
-// YouTube IFrame API ek baar load karna (block hone par reject)
 let ytApiPromise = null;
 function loadYouTubeApi() {
   if (window.YT && window.YT.Player) return Promise.resolve(window.YT);
@@ -52,7 +50,6 @@ function loadYouTubeApi() {
     };
     document.head.appendChild(tag);
 
-    // Firewall "blocked" page deta hai to onerror nahi chalta, isliye timeout
     setTimeout(() => {
       if (!(window.YT && window.YT.Player)) {
         ytApiPromise = null;
@@ -75,6 +72,9 @@ function App() {
   const [loadingMsg, setLoadingMsg] = useState('Loading...');
   const [songLoading, setSongLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // FULL SCREEN PLAYER STATE
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   const playerRef = useRef(null);
   const readyRef = useRef(false);
@@ -93,7 +93,6 @@ function App() {
 
   const clearLoadTimer = () => clearTimeout(loadTimerRef.current);
 
-  // ---------- YouTube Player setup ----------
   useEffect(() => {
     let cancelled = false;
     loadYouTubeApi()
@@ -124,7 +123,7 @@ function App() {
               } else if (e.data === S.BUFFERING) {
                 setSongLoading(true);
               } else if (e.data === S.CUED) {
-                playerRef.current.playVideo(); // autoplay atak gaya ho to dhakka do
+                playerRef.current.playVideo();
               } else if (e.data === S.ENDED) {
                 setIsPlaying(false);
                 playNextRef.current();
@@ -134,7 +133,6 @@ function App() {
               clearLoadTimer();
               setSongLoading(false);
               setIsPlaying(false);
-              // 101/150: embed allow nahi, 100: video hata diya gaya
               setError(
                 [101, 150].includes(e.data)
                   ? 'Is song ka owner embed allow nahi karta. Dusra song try karein.'
@@ -155,7 +153,6 @@ function App() {
     };
   }, []);
 
-  // Progress bar ke liye time poll karna
   useEffect(() => {
     if (!isPlaying) return;
     const t = setInterval(() => {
@@ -168,7 +165,6 @@ function App() {
     return () => clearInterval(t);
   }, [isPlaying]);
 
-  // ---------- Search Songs ----------
   const fetchSongs = async (searchQuery) => {
     const myId = ++searchIdRef.current;
     setLoading(true);
@@ -200,10 +196,8 @@ function App() {
 
   useEffect(() => {
     fetchSongs(query);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---------- Play/Pause Song ----------
   const playSong = (index) => {
     const song = songsRef.current[index];
     if (!song) return;
@@ -217,7 +211,6 @@ function App() {
 
     const p = playerRef.current;
 
-    // Same song: toggle
     if (indexRef.current === index && p && readyRef.current) {
       const state = p.getPlayerState();
       if (state === window.YT.PlayerState.PLAYING) p.pauseVideo();
@@ -233,7 +226,6 @@ function App() {
     setDuration(0);
     setError('');
 
-    // Spinner hamesha na ghumta rahe: 12 sec me start na ho to error dikhao
     clearLoadTimer();
     loadTimerRef.current = setTimeout(() => {
       setSongLoading(false);
@@ -262,7 +254,6 @@ function App() {
     if (i !== null && i > 0) playSong(i - 1);
   };
 
-  // ---------- Controls ----------
   const handleSeek = (e) => {
     const t = parseFloat(e.target.value);
     if (playerRef.current && readyRef.current) {
@@ -293,7 +284,6 @@ function App() {
 
   return (
     <div className="app-container">
-      {/* Lagbhag invisible YouTube player (display:none ya bahut door offscreen nahi) */}
       <div
         style={{ position: 'fixed', right: 0, bottom: 0, width: 200, height: 200, opacity: 0.01, pointerEvents: 'none', zIndex: -1 }}
         aria-hidden="true"
@@ -362,10 +352,10 @@ function App() {
         ))}
       </div>
 
-      {/* Bottom Player Bar */}
+      {/* Bottom Mini Player Bar */}
       {currentSong && (
         <div className="player-bar">
-          <div className="player-info">
+          <div className="player-info" onClick={() => setIsFullScreen(true)}>
             <img src={currentSong.image || PLACEHOLDER} alt={currentSong.name} className="player-img" />
             <div>
               <h4 className="song-title">{currentSong.name}</h4>
@@ -416,6 +406,77 @@ function App() {
               onChange={handleVolumeChange}
               style={{ width: '80px', accentColor: '#1db954', cursor: 'pointer' }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* FULL SCREEN PLAYER MODAL */}
+      {currentSong && isFullScreen && (
+        <div className="fullscreen-player">
+          <div className="fullscreen-header">
+            <button className="close-btn" onClick={() => setIsFullScreen(false)}>
+              <ChevronDown size={28} />
+            </button>
+            <span>NOW PLAYING</span>
+            <div style={{ width: 28 }} />
+          </div>
+
+          <div className="fullscreen-content">
+            <img 
+              src={currentSong.image || PLACEHOLDER} 
+              alt={currentSong.name} 
+              className="fullscreen-img" 
+            />
+
+            <div className="fullscreen-title-container">
+              <h2 className="fullscreen-song-title">{currentSong.name}</h2>
+              <p className="fullscreen-song-artist">{currentSong.artist}</p>
+            </div>
+
+            <div className="fullscreen-seekbar-container">
+              <input
+                type="range"
+                min="0"
+                max={duration || 0}
+                step="any"
+                value={currentTime}
+                onChange={handleSeek}
+                className="fullscreen-seekbar"
+              />
+              <div className="fullscreen-time">
+                <span>{formatTime(currentTime)}</span>
+                <span>{formatTime(duration)}</span>
+              </div>
+            </div>
+
+            <div className="fullscreen-controls">
+              <SkipBack size={32} onClick={handlePrev} className="control-icon" style={{ opacity: currentSongIndex === 0 ? 0.4 : 1 }} />
+              
+              <button className="fullscreen-play-btn" onClick={() => playSong(currentSongIndex)}>
+                {songLoading ? (
+                  <Loader2 size={30} style={{ animation: 'spin 1s linear infinite' }} />
+                ) : isPlaying ? (
+                  <Pause size={30} />
+                ) : (
+                  <Play size={30} />
+                )}
+              </button>
+
+              <SkipForward size={32} onClick={handleNext} className="control-icon" style={{ opacity: currentSongIndex === songs.length - 1 ? 0.4 : 1 }} />
+            </div>
+
+            <div className="fullscreen-volume">
+              {volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={volume}
+                onChange={handleVolumeChange}
+                style={{ width: '100%', accentColor: '#1db954', cursor: 'pointer' }}
+              />
+            </div>
           </div>
         </div>
       )}
