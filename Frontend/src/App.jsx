@@ -14,8 +14,14 @@ const PLACEHOLDER =
     '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect width="300" height="300" fill="#282828"/><text x="150" y="160" font-size="24" fill="#b3b3b3" text-anchor="middle" font-family="sans-serif">Music</text></svg>'
   );
 
+// Broken image ke liye common fallback (grid, mini player, fullscreen sab me)
+const imgFallback = (e) => {
+  e.currentTarget.onerror = null;
+  e.currentTarget.src = PLACEHOLDER;
+};
+
 const CATEGORIES = ['Bollywood Hits', 'Hindi Songs', 'Bhojpuri Hits', 'English Songs', 'Pawan Singh', 'Arijit Singh'];
-const PLAYER_BLOCKED_MSG = 'YouTube player load nahi hua. Network/firewall ya adblock check karein.';
+const PLAYER_BLOCKED_MSG = 'YouTube player load nahi hua. Network, AdBlocker ya Private DNS check karein.';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -36,27 +42,34 @@ let ytApiPromise = null;
 function loadYouTubeApi() {
   if (window.YT && window.YT.Player) return Promise.resolve(window.YT);
   if (ytApiPromise) return ytApiPromise;
+
   ytApiPromise = new Promise((resolve, reject) => {
-    const prev = window.onYouTubeIframeAPIReady;
-    window.onYouTubeIframeAPIReady = () => {
-      if (prev) prev();
-      resolve(window.YT);
-    };
-    const tag = document.createElement('script');
-    tag.src = 'https://www.youtube.com/iframe_api';
-    tag.onerror = () => {
-      ytApiPromise = null;
-      reject(new Error('YT API blocked'));
-    };
-    document.head.appendChild(tag);
+    if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      tag.onerror = () => {
+        ytApiPromise = null;
+        reject(new Error('YT API blocked'));
+      };
+      document.head.appendChild(tag);
+    }
+
+    const checkYT = setInterval(() => {
+      if (window.YT && window.YT.Player) {
+        clearInterval(checkYT);
+        resolve(window.YT);
+      }
+    }, 100);
 
     setTimeout(() => {
+      clearInterval(checkYT);
       if (!(window.YT && window.YT.Player)) {
         ytApiPromise = null;
         reject(new Error('YT API timeout'));
       }
-    }, 8000);
+    }, 12000);
   });
+
   return ytApiPromise;
 }
 
@@ -72,8 +85,6 @@ function App() {
   const [loadingMsg, setLoadingMsg] = useState('Loading...');
   const [songLoading, setSongLoading] = useState(false);
   const [error, setError] = useState('');
-  
-  // FULL SCREEN PLAYER STATE
   const [isFullScreen, setIsFullScreen] = useState(false);
 
   const playerRef = useRef(null);
@@ -99,8 +110,8 @@ function App() {
       .then((YT) => {
         if (cancelled) return;
         playerRef.current = new YT.Player('yt-player', {
-          height: '200',
-          width: '200',
+          height: '1',
+          width: '1',
           playerVars: { playsinline: 1, controls: 0, disablekb: 1, rel: 0, origin: window.location.origin },
           events: {
             onReady: () => {
@@ -146,6 +157,7 @@ function App() {
         apiFailedRef.current = true;
         setError(PLAYER_BLOCKED_MSG);
       });
+
     return () => {
       cancelled = true;
       clearLoadTimer();
@@ -169,10 +181,10 @@ function App() {
     const myId = ++searchIdRef.current;
     setLoading(true);
     setLoadingMsg('Loading...');
-    setError(apiFailedRef.current ? PLAYER_BLOCKED_MSG : '');
+    if (!apiFailedRef.current) setError('');
     try {
       const data = await searchWithRetry(searchQuery, () =>
-        setLoadingMsg('Server wake ho raha hai, 30-60 sec lag sakte hain...')
+        setLoadingMsg('Server wake ho raha hai, thodi der rukiye...')
       );
       if (myId !== searchIdRef.current) return;
       if (Array.isArray(data)) {
@@ -183,11 +195,10 @@ function App() {
       }
     } catch (err) {
       if (myId !== searchIdRef.current) return;
-      console.error('Search API Error:', err);
       if (err.response) {
         setError(err.response.data?.error || `Server error (${err.response.status})`);
       } else {
-        setError('Server se connect nahi ho paya. Backend wake-up ho raha hai, thodi der baad try karein.');
+        setError('Server se connect nahi ho paya. Thodi der baad try karein.');
       }
     } finally {
       if (myId === searchIdRef.current) setLoading(false);
@@ -243,13 +254,15 @@ function App() {
     }
   };
 
-  const handleNext = () => {
+  const handleNext = (e) => {
+    if (e) e.stopPropagation();
     const i = indexRef.current;
     if (i !== null && i < songsRef.current.length - 1) playSong(i + 1);
   };
   playNextRef.current = handleNext;
 
-  const handlePrev = () => {
+  const handlePrev = (e) => {
+    if (e) e.stopPropagation();
     const i = indexRef.current;
     if (i !== null && i > 0) playSong(i - 1);
   };
@@ -284,15 +297,13 @@ function App() {
 
   return (
     <div className="app-container">
-      <div
-        style={{ position: 'fixed', right: 0, bottom: 0, width: 200, height: 200, opacity: 0.01, pointerEvents: 'none', zIndex: -1 }}
-        aria-hidden="true"
-      >
+      {/* Hidden YouTube Container */}
+      <div className="yt-hidden-container" aria-hidden="true">
         <div id="yt-player" />
       </div>
 
       <header className="app-header">
-        <Music size={28} />
+        <Music size={26} />
         <span>VibeMusic App</span>
       </header>
 
@@ -326,8 +337,8 @@ function App() {
         </button>
       </form>
 
-      {loading && <p style={{ textAlign: 'center', color: '#b3b3b3' }}>{loadingMsg}</p>}
-      {error && <p style={{ textAlign: 'center', color: '#ff6b6b' }}>{error}</p>}
+      {loading && <p className="status-msg">{loadingMsg}</p>}
+      {error && <p className="status-msg error">{error}</p>}
 
       {/* Songs Grid */}
       <div className="songs-grid">
@@ -341,10 +352,7 @@ function App() {
               src={song.image || PLACEHOLDER}
               alt={song.name}
               className="song-img"
-              onError={(e) => {
-                e.currentTarget.onerror = null;
-                e.currentTarget.src = PLACEHOLDER;
-              }}
+              onError={imgFallback}
             />
             <h4 className="song-title">{song.name}</h4>
             <p className="song-artist">{song.artist}</p>
@@ -354,33 +362,36 @@ function App() {
 
       {/* Bottom Mini Player Bar */}
       {currentSong && (
-        <div className="player-bar">
-          <div className="player-info" onClick={() => setIsFullScreen(true)}>
-            <img src={currentSong.image || PLACEHOLDER} alt={currentSong.name} className="player-img" />
-            <div>
+        <div className="player-bar" onClick={() => setIsFullScreen(true)}>
+          <div className="player-info">
+            <img
+              src={currentSong.image || PLACEHOLDER}
+              alt={currentSong.name}
+              className="player-img"
+              onError={imgFallback}
+            />
+            <div className="player-text">
               <h4 className="song-title">{currentSong.name}</h4>
               <p className="song-artist">{currentSong.artist}</p>
             </div>
           </div>
 
-          <div style={{ flex: 1, maxWidth: '500px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <SkipBack size={20} onClick={handlePrev} style={{ cursor: 'pointer', opacity: currentSongIndex === 0 ? 0.4 : 1 }} />
-
-              <button className="player-play-btn" onClick={() => playSong(currentSongIndex)}>
+          <div className="player-controls-desktop">
+            <div className="controls-row">
+              <SkipBack size={20} onClick={handlePrev} className="control-btn" style={{ opacity: currentSongIndex === 0 ? 0.4 : 1 }} />
+              <button className="player-play-btn" onClick={(e) => { e.stopPropagation(); playSong(currentSongIndex); }}>
                 {songLoading ? (
-                  <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
+                  <Loader2 size={20} className="spin-icon" />
                 ) : isPlaying ? (
                   <Pause size={20} />
                 ) : (
                   <Play size={20} />
                 )}
               </button>
-
-              <SkipForward size={20} onClick={handleNext} style={{ cursor: 'pointer', opacity: currentSongIndex === songs.length - 1 ? 0.4 : 1 }} />
+              <SkipForward size={20} onClick={handleNext} className="control-btn" style={{ opacity: currentSongIndex === songs.length - 1 ? 0.4 : 1 }} />
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', fontSize: '12px', color: '#b3b3b3' }}>
+            <div className="seekbar-row" onClick={(e) => e.stopPropagation()}>
               <span>{formatTime(currentTime)}</span>
               <input
                 type="range"
@@ -389,13 +400,13 @@ function App() {
                 step="any"
                 value={currentTime}
                 onChange={handleSeek}
-                style={{ flex: 1, accentColor: '#1db954', cursor: 'pointer' }}
+                className="seekbar-input"
               />
               <span>{formatTime(duration)}</span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#b3b3b3', minWidth: '120px' }}>
+          <div className="player-volume-desktop" onClick={(e) => e.stopPropagation()}>
             {volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
             <input
               type="range"
@@ -404,9 +415,23 @@ function App() {
               step="0.01"
               value={volume}
               onChange={handleVolumeChange}
-              style={{ width: '80px', accentColor: '#1db954', cursor: 'pointer' }}
+              className="volume-input"
             />
           </div>
+
+          {/* Mobile Only Control Button */}
+          <button 
+            className="player-play-btn mobile-only-play" 
+            onClick={(e) => { e.stopPropagation(); playSong(currentSongIndex); }}
+          >
+            {songLoading ? (
+              <Loader2 size={18} className="spin-icon" />
+            ) : isPlaying ? (
+              <Pause size={18} />
+            ) : (
+              <Play size={18} />
+            )}
+          </button>
         </div>
       )}
 
@@ -425,7 +450,8 @@ function App() {
             <img 
               src={currentSong.image || PLACEHOLDER} 
               alt={currentSong.name} 
-              className="fullscreen-img" 
+              className="fullscreen-img"
+              onError={imgFallback}
             />
 
             <div className="fullscreen-title-container">
@@ -454,11 +480,11 @@ function App() {
               
               <button className="fullscreen-play-btn" onClick={() => playSong(currentSongIndex)}>
                 {songLoading ? (
-                  <Loader2 size={30} style={{ animation: 'spin 1s linear infinite' }} />
+                  <Loader2 size={28} className="spin-icon" />
                 ) : isPlaying ? (
-                  <Pause size={30} />
+                  <Pause size={28} />
                 ) : (
-                  <Play size={30} />
+                  <Play size={28} />
                 )}
               </button>
 
