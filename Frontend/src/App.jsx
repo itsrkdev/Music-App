@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Play, Pause, Search, Music, SkipBack, SkipForward, Volume2, VolumeX, Loader2 } from 'lucide-react';
 import './App.css';
 
-const API = (import.meta.env.VITE_API_URL ;
+const API = (import.meta.env.VITE_API_URL || 'https://music-app-mxgg.onrender.com').replace(/\/+$/, '');
 
 const PLACEHOLDER =
   'data:image/svg+xml;utf8,' +
