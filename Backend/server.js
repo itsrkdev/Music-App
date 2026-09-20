@@ -5,14 +5,12 @@ import 'dotenv/config';
 
 const app = express();
 
-// CORS for all origins (Netlify, Vercel, Localhost)
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Backup API endpoints list
 const API_ENDPOINTS = [
   'https://saavn.dev/api',
   'https://jiosaavn-api-beta-three.vercel.app/api',
@@ -23,13 +21,14 @@ const fetchWithFallback = async (path, params) => {
   for (const baseUrl of API_ENDPOINTS) {
     try {
       const url = `${baseUrl}${path}`;
-      const res = await axios.get(url, { params, timeout: 5000 });
+      // Timeout 12 seconds kiya gaya hai
+      const res = await axios.get(url, { params, timeout: 12000 });
       if (res.data) return res.data;
     } catch (err) {
-      console.log(`Failed on ${baseUrl}, trying next...`);
+      console.log(`Failed on ${baseUrl}: ${err.message}, trying next...`);
     }
   }
-  throw new Error('All API endpoints blocked or unreachable.');
+  throw new Error('All API endpoints failed or timed out.');
 };
 
 // ---------- Search Endpoint ----------
@@ -66,7 +65,7 @@ app.get('/api/search', async (req, res) => {
 
     res.json(songs);
   } catch (err) {
-    console.error("Search Error:", err.message);
+    console.error("Search Error Detail:", err.message);
     res.status(500).json({ error: 'Search failed' });
   }
 });
