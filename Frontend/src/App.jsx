@@ -14,12 +14,6 @@ const PLACEHOLDER =
     '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect width="300" height="300" fill="#282828"/><text x="150" y="160" font-size="24" fill="#b3b3b3" text-anchor="middle" font-family="sans-serif">Music</text></svg>'
   );
 
-// Broken image ke liye common fallback (grid, mini player, fullscreen sab me)
-const imgFallback = (e) => {
-  e.currentTarget.onerror = null;
-  e.currentTarget.src = PLACEHOLDER;
-};
-
 const CATEGORIES = ['Bollywood Hits', 'Hindi Songs', 'Bhojpuri Hits', 'English Songs', 'Pawan Singh', 'Arijit Singh'];
 const PLAYER_BLOCKED_MSG = 'YouTube player load nahi hua. Network, AdBlocker ya Private DNS check karein.';
 
@@ -44,17 +38,12 @@ function loadYouTubeApi() {
   if (ytApiPromise) return ytApiPromise;
 
   ytApiPromise = new Promise((resolve, reject) => {
-    if (!document.querySelector('script[src*="iframe_api"]')) {
+    if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
       const tag = document.createElement('script');
-      // Corporate / Office network bypass ke liye youtube-nocookie pehle try karein
-      tag.src = 'https://www.youtube-nocookie.com/iframe_api';
+      tag.src = 'https://www.youtube.com/iframe_api';
       tag.onerror = () => {
-        // Fallback to standard YouTube API script
-        tag.src = 'https://www.youtube.com/iframe_api';
-        tag.onerror = () => {
-          ytApiPromise = null;
-          reject(new Error('YT API blocked'));
-        };
+        ytApiPromise = null;
+        reject(new Error('YT API blocked'));
       };
       document.head.appendChild(tag);
     }
@@ -117,15 +106,7 @@ function App() {
         playerRef.current = new YT.Player('yt-player', {
           height: '1',
           width: '1',
-          // Privacy domain set kiya hai taaki network blocking se bache
-          host: 'https://www.youtube-nocookie.com',
-          playerVars: { 
-            playsinline: 1, 
-            controls: 0, 
-            disablekb: 1, 
-            rel: 0, 
-            origin: window.location.origin 
-          },
+          playerVars: { playsinline: 1, controls: 0, disablekb: 1, rel: 0, origin: window.location.origin },
           events: {
             onReady: () => {
               readyRef.current = true;
@@ -160,7 +141,7 @@ function App() {
               setError(
                 [101, 150].includes(e.data)
                   ? 'Is song ka owner embed allow nahi karta. Dusra song try karein.'
-                  : 'Song play nahi ho paya. Office Firewall ya DNS restricts YouTube.'
+                  : 'Song play nahi ho paya. Dusra song try karein.'
               );
             },
           },
@@ -317,7 +298,7 @@ function App() {
 
       <header className="app-header">
         <Music size={26} />
-        <span>RkMusic App</span>
+        <span>VibeMusic App</span>
       </header>
 
       {/* Category Filters */}
@@ -365,7 +346,10 @@ function App() {
               src={song.image || PLACEHOLDER}
               alt={song.name}
               className="song-img"
-              onError={imgFallback}
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = PLACEHOLDER;
+              }}
             />
             <h4 className="song-title">{song.name}</h4>
             <p className="song-artist">{song.artist}</p>
@@ -377,12 +361,7 @@ function App() {
       {currentSong && (
         <div className="player-bar" onClick={() => setIsFullScreen(true)}>
           <div className="player-info">
-            <img
-              src={currentSong.image || PLACEHOLDER}
-              alt={currentSong.name}
-              className="player-img"
-              onError={imgFallback}
-            />
+            <img src={currentSong.image || PLACEHOLDER} alt={currentSong.name} className="player-img" />
             <div className="player-text">
               <h4 className="song-title">{currentSong.name}</h4>
               <p className="song-artist">{currentSong.artist}</p>
@@ -463,8 +442,7 @@ function App() {
             <img 
               src={currentSong.image || PLACEHOLDER} 
               alt={currentSong.name} 
-              className="fullscreen-img"
-              onError={imgFallback}
+              className="fullscreen-img" 
             />
 
             <div className="fullscreen-title-container">
