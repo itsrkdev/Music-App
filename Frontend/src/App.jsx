@@ -422,13 +422,15 @@ function App() {
             </div>
           </div>
 
+          {/* Shows the CURRENT mode (not the action) — green/Video when
+              video is on, grey/Audio when it's audio-only. */}
           <button
             className={`video-toggle-btn ${showVideo ? 'active' : ''}`}
             onClick={toggleVideoMode}
-            title={showVideo ? 'Audio mode par switch karein' : 'Video mode par switch karein'}
+            title={showVideo ? 'Audio-only par switch karein' : 'Video dekhne ke liye tap karein'}
           >
-            {showVideo ? <Headphones size={18} /> : <Video size={18} />}
-            <span className="video-toggle-label">{showVideo ? 'Audio' : 'Video'}</span>
+            {showVideo ? <Video size={18} /> : <Headphones size={18} />}
+            <span className="video-toggle-label">{showVideo ? 'Video' : 'Audio'}</span>
           </button>
 
           <div className="player-volume-desktop" onClick={(e) => e.stopPropagation()}>
@@ -472,13 +474,13 @@ function App() {
               className={`video-toggle-btn fullscreen-toggle ${showVideo ? 'active' : ''}`}
               onClick={(e) => {
                 toggleVideoMode(e);
-                // video plays in the inline card on the main page, not inside
+                // video plays in the sticky card on the main page, not inside
                 // this modal — close fullscreen so it's immediately visible
                 if (!showVideo) setIsFullScreen(false);
               }}
-              title={showVideo ? 'Audio mode par switch karein' : 'Video dekhne ke liye (page par khulega)'}
+              title={showVideo ? 'Audio-only par switch karein' : 'Video dekhne ke liye (page par khulega)'}
             >
-              {showVideo ? <Headphones size={20} /> : <Video size={20} />}
+              {showVideo ? <Video size={20} /> : <Headphones size={20} />}
             </button>
           </div>
 
