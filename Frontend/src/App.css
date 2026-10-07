@@ -1,73 +1,77 @@
-```css
-/* =========================================
-   1. RESET & BASE STYLES
-========================================= */
-
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-html,
 body {
-  width: 100%;
-  min-height: 100%;
-  background: #121212;
+  background-color: #121212;
   color: #ffffff;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  overflow-x: hidden;
-  -webkit-tap-highlight-color: transparent;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
-
-body {
-  min-height: 100vh;
-}
-
-/* =========================================
-   2. MAIN APP CONTAINER
-========================================= */
 
 .app-container {
-  width: 100%;
-  min-height: 100vh;
   max-width: 1200px;
   margin: 0 auto;
   padding: 16px;
-  padding-bottom: 110px;
-
-  /* IMPORTANT:
-     sticky video ke liye parent par overflow hidden/auto
-     nahi hona chahiye */
-  overflow: visible;
+  padding-bottom: 110px; /* Space for bottom player bar */
+  min-height: 100vh;
 }
-
-/* =========================================
-   3. HEADER
-========================================= */
 
 .app-header {
   display: flex;
   align-items: center;
   gap: 10px;
+  font-size: 1.5rem;
+  font-weight: bold;
   margin-bottom: 16px;
   color: #1db954;
-  font-size: 22px;
-  font-weight: 700;
 }
 
-/* =========================================
-   4. CATEGORY FILTERS
-========================================= */
+/* STICKY VIDEO CARD IMPLEMENTATION */
+.inline-video-card {
+  position: sticky;
+  top: 10px;
+  z-index: 90;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+  border: 1px solid #282828;
+  display: none;
+  transition: all 0.3s ease;
+}
 
+.inline-video-card.visible {
+  display: block;
+}
+
+.yt-video-box {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 420px;
+  background: #000;
+}
+
+.yt-video-box iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.inline-video-meta {
+  padding: 12px 16px;
+  background: #181818;
+}
+
+/* CATEGORIES */
 .filter-container {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  gap: 10px;
   overflow-x: auto;
-  padding-bottom: 8px;
+  padding-bottom: 12px;
   margin-bottom: 16px;
-  scrollbar-width: none;
 }
 
 .filter-container::-webkit-scrollbar {
@@ -75,53 +79,39 @@ body {
 }
 
 .filter-btn {
-  flex: 0 0 auto;
-  white-space: nowrap;
-  border: none;
   background: #282828;
-  color: #ffffff;
+  color: #fff;
+  border: none;
   padding: 8px 16px;
   border-radius: 20px;
-  font-size: 13px;
   cursor: pointer;
+  white-space: nowrap;
+  font-size: 0.9rem;
   transition: background 0.2s ease;
 }
 
-.filter-btn:hover {
-  background: #333333;
-}
-
-.filter-btn.active {
+.filter-btn.active, .filter-btn:hover {
   background: #1db954;
-  color: #000000;
-  font-weight: 700;
+  color: #000;
+  font-weight: bold;
 }
 
-/* =========================================
-   5. SEARCH BAR
-========================================= */
-
+/* SEARCH */
 .search-form {
   display: flex;
   gap: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .search-input {
   flex: 1;
-  min-width: 0;
-  height: 42px;
   background: #282828;
-  color: #ffffff;
-  border: 1px solid #3a3a3a;
-  border-radius: 8px;
-  padding: 0 12px;
-  font-size: 14px;
+  border: 1px solid #3e3e3e;
+  border-radius: 24px;
+  padding: 12px 20px;
+  color: #fff;
+  font-size: 1rem;
   outline: none;
-}
-
-.search-input::placeholder {
-  color: #888888;
 }
 
 .search-input:focus {
@@ -129,878 +119,338 @@ body {
 }
 
 .search-btn {
-  width: 44px;
-  height: 42px;
-  flex-shrink: 0;
   background: #1db954;
-  color: #000000;
   border: none;
-  border-radius: 8px;
+  border-radius: 50%;
+  width: 46px;
+  height: 46px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  color: #000;
 }
 
-.search-btn:hover {
-  background: #1ed760;
-}
-
-/* =========================================
-   6. STATUS / ERROR
-========================================= */
-
+/* STATUS */
 .status-msg {
-  font-size: 13px;
+  text-align: center;
+  margin: 20px 0;
   color: #b3b3b3;
-  margin-bottom: 12px;
 }
 
 .status-msg.error {
-  color: #ff6b6b;
+  color: #ff5555;
 }
 
-/* =========================================
-   7. SONG GRID
-========================================= */
-
+/* SONGS GRID */
 .songs-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
 }
 
-/* =========================================
-   8. SONG CARD
-========================================= */
-
 .song-card {
-  min-width: 0;
   background: #181818;
-  padding: 10px;
   border-radius: 8px;
+  padding: 12px;
   cursor: pointer;
-  transition:
-    background 0.2s ease,
-    transform 0.2s ease;
+  transition: background 0.2s ease, transform 0.2s ease;
 }
 
 .song-card:hover {
   background: #282828;
-  transform: translateY(-2px);
+  transform: translateY(-4px);
 }
 
 .song-card.playing {
-  background: #282828;
-  border: 1px solid #1db954;
+  border: 2px solid #1db954;
 }
 
 .song-img {
-  display: block;
   width: 100%;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 1;
   object-fit: cover;
   border-radius: 6px;
-  margin-bottom: 8px;
-  background: #282828;
+  margin-bottom: 10px;
 }
 
 .song-title {
-  font-size: 12px;
+  font-size: 0.95rem;
   font-weight: 600;
-  color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-bottom: 4px;
 }
 
 .song-artist {
-  font-size: 11px;
-  color: #a7a7a7;
-  margin-top: 2px;
+  font-size: 0.8rem;
+  color: #b3b3b3;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* =========================================
-   9. INLINE VIDEO PLAYER
-   IMPORTANT FIX FOR SCROLL
-========================================= */
-
-.inline-video-card {
-  width: 100%;
-  max-width: 720px;
-
-  /* Sticky ke liye normal document flow */
-  position: relative;
-
-  margin: 0 auto;
-
-  height: 0;
-  overflow: hidden;
-
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-
-  border-radius: 0 0 16px 16px;
-
-  transition:
-    opacity 0.25s ease,
-    margin 0.25s ease,
-    visibility 0.25s ease;
-}
-
-/*
-   VIDEO MODE
-   Scroll karne par top par fixed/sticky rahega.
-*/
-.inline-video-card.visible {
-  position: -webkit-sticky;
-  position: sticky;
-
-  top: 0;
-
-  z-index: 999;
-
-  height: auto;
-  margin: 0 auto 20px;
-
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-
-  overflow: visible;
-
-  background: #0b0b0b;
-
-  border-radius: 0 0 16px 16px;
-
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
-
-  align-self: flex-start;
-}
-
-/* =========================================
-   10. YOUTUBE VIDEO BOX
-========================================= */
-
-.yt-video-box {
-  position: relative;
-
-  width: 100%;
-
-  padding-top: 56.25%;
-
-  background: #000000;
-
-  border-radius: 16px;
-
-  overflow: hidden;
-
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
-}
-
-.yt-video-box iframe {
-  position: absolute !important;
-
-  top: 0 !important;
-  left: 0 !important;
-
-  width: 100% !important;
-  height: 100% !important;
-
-  border: 0 !important;
-}
-
-/*
-   Audio mode:
-   video ko visually hide rakho,
-   lekin YouTube player DOM destroy nahi hoga.
-*/
-.inline-video-card:not(.visible) .yt-video-box {
-  width: 1px;
-  height: 1px;
-
-  padding-top: 0;
-
-  overflow: hidden;
-}
-
-.inline-video-card:not(.visible) .yt-video-box iframe {
-  width: 1px !important;
-  height: 1px !important;
-}
-
-/* =========================================
-   11. VIDEO SONG INFO
-========================================= */
-
-.inline-video-meta {
-  padding: 14px 18px 4px;
-  text-align: center;
-}
-
-.inline-video-meta .song-title {
-  font-size: 16px;
-  margin: 0;
-}
-
-.inline-video-meta .song-artist {
-  color: #b3b3b3;
-  font-size: 13px;
-  margin: 2px 0 0;
-}
-
-/* =========================================
-   12. VIDEO / AUDIO TOGGLE
-========================================= */
-
-.video-toggle-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  gap: 6px;
-
-  background: #2a2a2a;
-
-  border: 1px solid #3a3a3a;
-
-  color: #e5e5e5;
-
-  padding: 8px 14px;
-
-  border-radius: 999px;
-
-  cursor: pointer;
-
-  font-size: 13px;
-
-  font-weight: 600;
-
-  transition:
-    background 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease;
-
-  flex-shrink: 0;
-}
-
-.video-toggle-btn:hover {
-  border-color: #1db954;
-}
-
-.video-toggle-btn.active {
-  background: #1db954;
-
-  border-color: #1db954;
-
-  color: #0b0b0b;
-}
-
-.video-toggle-label {
-  display: inline-block;
-}
-
-/* Fullscreen toggle */
-
-.video-toggle-btn.fullscreen-toggle {
-  padding: 8px;
-  border-radius: 50%;
-}
-
-/* =========================================
-   13. BOTTOM MINI PLAYER
-========================================= */
-
+/* BOTTOM PLAYER BAR */
 .player-bar {
   position: fixed;
-
+  bottom: 0;
   left: 0;
   right: 0;
-  bottom: 0;
-
-  min-height: 75px;
-
+  height: 80px;
   background: #181818;
-
   border-top: 1px solid #282828;
-
-  padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
-
   display: flex;
-
   align-items: center;
-
   justify-content: space-between;
-
-  gap: 12px;
-
-  z-index: 1500;
-
-  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.5);
+  padding: 0 16px;
+  z-index: 100;
+  cursor: pointer;
 }
 
 .player-info {
   display: flex;
-
   align-items: center;
-
-  gap: 10px;
-
-  flex: 1;
-
-  min-width: 0;
-
-  cursor: pointer;
+  gap: 12px;
+  width: 25%;
+  min-width: 150px;
 }
 
 .player-img {
-  width: 44px;
-
-  height: 44px;
-
-  border-radius: 6px;
-
+  width: 52px;
+  height: 52px;
+  border-radius: 4px;
   object-fit: cover;
-
-  flex-shrink: 0;
-
-  background: #282828;
 }
-
-.player-text {
-  min-width: 0;
-
-  flex: 1;
-}
-
-/* =========================================
-   14. PLAYER PLAY BUTTON
-========================================= */
-
-.player-play-btn {
-  width: 40px;
-
-  height: 40px;
-
-  background: #1db954;
-
-  color: #000000;
-
-  border: none;
-
-  border-radius: 50%;
-
-  display: flex;
-
-  align-items: center;
-
-  justify-content: center;
-
-  cursor: pointer;
-
-  flex-shrink: 0;
-}
-
-.player-play-btn:hover {
-  background: #1ed760;
-}
-
-/* =========================================
-   15. DESKTOP PLAYER CONTROLS
-========================================= */
 
 .player-controls-desktop {
-  flex: 2;
-
   display: flex;
-
   flex-direction: column;
-
   align-items: center;
-
   gap: 6px;
-
+  flex: 1;
   max-width: 500px;
 }
 
 .controls-row {
   display: flex;
-
   align-items: center;
-
-  justify-content: center;
-
-  gap: 20px;
+  gap: 16px;
 }
 
 .control-btn {
   cursor: pointer;
+  color: #b3b3b3;
+  transition: color 0.2s;
+}
 
-  color: #ffffff;
+.control-btn:hover {
+  color: #fff;
+}
 
-  flex-shrink: 0;
+.player-play-btn {
+  background: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #000;
 }
 
 .seekbar-row {
   display: flex;
-
   align-items: center;
-
   gap: 8px;
-
   width: 100%;
-
-  font-size: 11px;
-
+  font-size: 0.75rem;
   color: #b3b3b3;
 }
 
 .seekbar-input {
   flex: 1;
-
   accent-color: #1db954;
-
-  height: 4px;
-
   cursor: pointer;
 }
 
-/* =========================================
-   16. VOLUME
-========================================= */
-
-.player-volume-desktop {
-  flex: 1;
-
+/* TOGGLE AUDIO/VIDEO BUTTON */
+.video-toggle-btn {
   display: flex;
-
   align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 1px solid #3e3e3e;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
 
-  justify-content: flex-end;
+.video-toggle-btn.active-video {
+  background: #1db954;
+  color: #000;
+  border-color: #1db954;
+}
 
-  gap: 8px;
-
+.video-toggle-btn.active-audio {
+  background: #282828;
   color: #b3b3b3;
 }
 
-.volume-input {
-  width: 100px;
-
-  accent-color: #1db954;
-
-  cursor: pointer;
+.video-toggle-btn:hover {
+  transform: scale(1.04);
 }
 
-/* =========================================
-   17. MOBILE PLAY
-========================================= */
+.player-volume-desktop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 15%;
+  min-width: 100px;
+}
+
+.volume-input {
+  width: 100%;
+  accent-color: #1db954;
+  cursor: pointer;
+}
 
 .mobile-only-play {
   display: none;
 }
 
-/* =========================================
-   18. LOADING SPINNER
-========================================= */
+/* FULLSCREEN PLAYER MODAL */
+.fullscreen-player {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(to bottom, #282828, #121212);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
+
+.fullscreen-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+}
+
+.fullscreen-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  max-width: 400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.fullscreen-img {
+  width: 280px;
+  height: 280px;
+  border-radius: 12px;
+  object-fit: cover;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.fullscreen-title-container {
+  text-align: center;
+  margin-bottom: 24px;
+  width: 100%;
+}
+
+.fullscreen-song-title {
+  font-size: 1.4rem;
+  margin-bottom: 6px;
+}
+
+.fullscreen-song-artist {
+  color: #b3b3b3;
+  font-size: 1rem;
+}
+
+.fullscreen-seekbar-container {
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+.fullscreen-seekbar {
+  width: 100%;
+  accent-color: #1db954;
+  cursor: pointer;
+}
+
+.fullscreen-time {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: #b3b3b3;
+  margin-top: 6px;
+}
+
+.fullscreen-controls {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  margin-bottom: 24px;
+}
+
+.fullscreen-play-btn {
+  background: #1db954;
+  border: none;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #000;
+}
+
+.fullscreen-volume {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
 
 .spin-icon {
   animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
+  100% { transform: rotate(360deg); }
 }
 
-/* =========================================
-   19. FULL SCREEN PLAYER
-========================================= */
-
-.fullscreen-player {
-  position: fixed;
-
-  top: 0;
-  left: 0;
-
-  width: 100vw;
-
-  height: 100vh;
-  height: 100dvh;
-
-  background: linear-gradient(
-    180deg,
-    #222222 0%,
-    #121212 100%
-  );
-
-  z-index: 3000;
-
-  display: flex;
-
-  flex-direction: column;
-
-  justify-content: space-between;
-
-  padding: 16px 20px
-    calc(20px + env(safe-area-inset-bottom));
-
-  animation: slideUp 0.25s ease-out;
-
-  overflow: hidden;
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(100%);
-  }
-
-  to {
-    transform: translateY(0);
-  }
-}
-
-/* =========================================
-   20. FULLSCREEN HEADER
-========================================= */
-
-.fullscreen-header {
-  display: flex;
-
-  align-items: center;
-
-  justify-content: space-between;
-
-  font-size: 11px;
-
-  letter-spacing: 1px;
-
-  color: #b3b3b3;
-
-  font-weight: 600;
-
-  width: 100%;
-
-  height: 40px;
-}
-
-.close-btn {
-  background: none;
-
-  border: none;
-
-  color: #ffffff;
-
-  cursor: pointer;
-
-  padding: 4px;
-
-  display: flex;
-
-  align-items: center;
-}
-
-/* =========================================
-   21. FULLSCREEN CONTENT
-========================================= */
-
-.fullscreen-content {
-  display: flex;
-
-  flex-direction: column;
-
-  align-items: center;
-
-  width: 100%;
-
-  max-width: 380px;
-
-  margin: 0 auto;
-
-  flex: 1;
-
-  justify-content: center;
-}
-
-.fullscreen-img {
-  width: 100%;
-
-  max-width: 280px;
-
-  aspect-ratio: 1 / 1;
-
-  object-fit: cover;
-
-  border-radius: 12px;
-
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
-
-  margin-bottom: 20px;
-
-  background: #282828;
-}
-
-.fullscreen-title-container {
-  width: 100%;
-
-  min-width: 0;
-
-  text-align: left;
-
-  margin-bottom: 16px;
-}
-
-.fullscreen-song-title {
-  font-size: 18px;
-
-  font-weight: 700;
-
-  color: #ffffff;
-
-  margin-bottom: 4px;
-
-  white-space: nowrap;
-
-  overflow: hidden;
-
-  text-overflow: ellipsis;
-}
-
-.fullscreen-song-artist {
-  font-size: 13px;
-
-  color: #b3b3b3;
-
-  white-space: nowrap;
-
-  overflow: hidden;
-
-  text-overflow: ellipsis;
-}
-
-/* =========================================
-   22. FULLSCREEN SEEKBAR
-========================================= */
-
-.fullscreen-seekbar-container {
-  width: 100%;
-
-  margin-bottom: 16px;
-}
-
-.fullscreen-seekbar {
-  width: 100%;
-
-  accent-color: #1db954;
-
-  height: 4px;
-
-  cursor: pointer;
-}
-
-.fullscreen-time {
-  display: flex;
-
-  justify-content: space-between;
-
-  font-size: 11px;
-
-  color: #b3b3b3;
-
-  margin-top: 6px;
-}
-
-/* =========================================
-   23. FULLSCREEN CONTROLS
-========================================= */
-
-.fullscreen-controls {
-  display: flex;
-
-  align-items: center;
-
-  justify-content: center;
-
-  gap: 28px;
-
-  margin-bottom: 20px;
-}
-
-.fullscreen-play-btn {
-  width: 60px;
-
-  height: 60px;
-
-  border-radius: 50%;
-
-  background: #1db954;
-
-  color: #000000;
-
-  border: none;
-
-  display: flex;
-
-  align-items: center;
-
-  justify-content: center;
-
-  cursor: pointer;
-
-  box-shadow: 0 4px 15px rgba(29, 185, 84, 0.4);
-}
-
-.fullscreen-play-btn:hover {
-  background: #1ed760;
-}
-
-.control-icon {
-  cursor: pointer;
-
-  color: #ffffff;
-}
-
-/* =========================================
-   24. FULLSCREEN VOLUME
-========================================= */
-
-.fullscreen-volume {
-  display: flex;
-
-  align-items: center;
-
-  gap: 12px;
-
-  width: 100%;
-
-  color: #b3b3b3;
-}
-
-/* =========================================
-   25. MOBILE
-========================================= */
-
-@media (max-width: 600px) {
-  .app-container {
-    padding: 12px;
-
-    padding-bottom: 95px;
-
-    overflow: visible;
-  }
-
-  .songs-grid {
-    grid-template-columns: repeat(
-      2,
-      minmax(0, 1fr)
-    );
-
-    gap: 10px;
-  }
-
-  .player-bar {
-    padding: 8px 12px
-      calc(8px + env(safe-area-inset-bottom));
-  }
-
-  /* Mobile par desktop controls hide */
+/* RESPONSIVE */
+@media (max-width: 768px) {
   .player-controls-desktop,
   .player-volume-desktop {
     display: none;
   }
-
   .mobile-only-play {
     display: flex;
   }
-
-  .fullscreen-img {
-    max-width: 240px;
-  }
-
-  /*
-     Mobile video sticky
-     browser ke top ke just neeche rahega
-  */
-  .inline-video-card.visible {
-    top: 0;
-
-    width: 100%;
-
-    max-width: 100%;
-
-    margin-left: 0;
-    margin-right: 0;
-
-    border-radius: 0 0 12px 12px;
-  }
-
-  .yt-video-box {
-    border-radius: 0 0 12px 12px;
-  }
-}
-
-/* =========================================
-   26. SMALL MOBILE
-========================================= */
-
-@media (max-width: 400px) {
-  .app-container {
-    padding-left: 10px;
-
-    padding-right: 10px;
-  }
-
-  .song-card {
-    padding: 8px;
-  }
-
-  .player-img {
-    width: 40px;
-
-    height: 40px;
-  }
-
-  .player-play-btn {
-    width: 38px;
-
-    height: 38px;
-  }
-}
-
-/* =========================================
-   27. VIDEO BUTTON MOBILE
-========================================= */
-
-@media (max-width: 640px) {
-  .video-toggle-label {
-    display: none;
-  }
-
-  .video-toggle-btn {
-    padding: 8px;
-
-    border-radius: 50%;
-  }
-}
-
-/* =========================================
-   28. REDUCE MOTION
-========================================= */
-
-@media (prefers-reduced-motion: reduce) {
-  * {
-    scroll-behavior: auto !important;
-
-    transition: none !important;
-
-    animation: none !important;
+  .player-info {
+    width: auto;
+    flex: 1;
   }
 }
