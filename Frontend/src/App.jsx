@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import { 
-  Play, Pause, Search, Music, SkipBack, SkipForward, 
-  Volume2, VolumeX, Loader2, ChevronDown 
+import {
+  Play, Pause, Search, Music, SkipBack, SkipForward,
+  Volume2, VolumeX, Loader2, ChevronDown, Video, Headphones
 } from 'lucide-react';
 import './App.css';
 
@@ -80,6 +80,7 @@ function App() {
   const [songLoading, setSongLoading] = useState(false);
   const [error, setError] = useState('');
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [showVideo, setShowVideo] = useState(false); // NEW: audio vs video mode
 
   const playerRef = useRef(null);
   const readyRef = useRef(false);
@@ -103,10 +104,13 @@ function App() {
     loadYouTubeApi()
       .then((YT) => {
         if (cancelled) return;
+        // NOTE: height/width set to 100% — actual visible size is fully controlled
+        // by CSS (.yt-hidden-container / .yt-visible-container), so toggling
+        // audio <-> video never needs to recreate the player.
         playerRef.current = new YT.Player('yt-player', {
-          height: '1',
-          width: '1',
-          playerVars: { playsinline: 1, controls: 0, disablekb: 1, rel: 0, origin: window.location.origin },
+          height: '100%',
+          width: '100%',
+          playerVars: { playsinline: 1, controls: 1, disablekb: 1, rel: 0, origin: window.location.origin },
           events: {
             onReady: () => {
               readyRef.current = true;
@@ -287,13 +291,33 @@ function App() {
     if (query.trim()) fetchSongs(query);
   };
 
+  const toggleVideoMode = (e) => {
+    if (e) e.stopPropagation();
+    setShowVideo((v) => !v);
+  };
+
   const currentSong = currentSongIndex !== null ? songs[currentSongIndex] : null;
+
+  // One single, stable DOM slot for the YouTube player. It is NEVER
+  // unmounted or moved — only resized/repositioned via CSS classes — so
+  // switching audio <-> video never interrupts playback.
+  const videoCardVisible = currentSong && showVideo;
 
   return (
     <div className="app-container">
-      {/* Hidden YouTube Container */}
-      <div className="yt-hidden-container" aria-hidden="true">
-        <div id="yt-player" />
+      {/* Inline video card — becomes a real 16:9 box only in video mode.
+          In audio mode (or no song selected) this collapses to 0 size and
+          the same #yt-player div keeps running invisibly inside it. */}
+      <div className={videoCardVisible ? 'inline-video-card visible' : 'inline-video-card'}>
+        <div className="yt-video-box">
+          <div id="yt-player" />
+        </div>
+        {videoCardVisible && (
+          <div className="inline-video-meta">
+            <h4 className="song-title">{currentSong.name}</h4>
+            <p className="song-artist">{currentSong.artist}</p>
+          </div>
+        )}
       </div>
 
       <header className="app-header">
@@ -398,6 +422,15 @@ function App() {
             </div>
           </div>
 
+          <button
+            className={`video-toggle-btn ${showVideo ? 'active' : ''}`}
+            onClick={toggleVideoMode}
+            title={showVideo ? 'Audio mode par switch karein' : 'Video mode par switch karein'}
+          >
+            {showVideo ? <Headphones size={18} /> : <Video size={18} />}
+            <span className="video-toggle-label">{showVideo ? 'Audio' : 'Video'}</span>
+          </button>
+
           <div className="player-volume-desktop" onClick={(e) => e.stopPropagation()}>
             {volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
             <input
@@ -412,8 +445,8 @@ function App() {
           </div>
 
           {/* Mobile Only Control Button */}
-          <button 
-            className="player-play-btn mobile-only-play" 
+          <button
+            className="player-play-btn mobile-only-play"
             onClick={(e) => { e.stopPropagation(); playSong(currentSongIndex); }}
           >
             {songLoading ? (
@@ -435,14 +468,25 @@ function App() {
               <ChevronDown size={28} />
             </button>
             <span>NOW PLAYING</span>
-            <div style={{ width: 28 }} />
+            <button
+              className={`video-toggle-btn fullscreen-toggle ${showVideo ? 'active' : ''}`}
+              onClick={(e) => {
+                toggleVideoMode(e);
+                // video plays in the inline card on the main page, not inside
+                // this modal — close fullscreen so it's immediately visible
+                if (!showVideo) setIsFullScreen(false);
+              }}
+              title={showVideo ? 'Audio mode par switch karein' : 'Video dekhne ke liye (page par khulega)'}
+            >
+              {showVideo ? <Headphones size={20} /> : <Video size={20} />}
+            </button>
           </div>
 
           <div className="fullscreen-content">
-            <img 
-              src={currentSong.image || PLACEHOLDER} 
-              alt={currentSong.name} 
-              className="fullscreen-img" 
+            <img
+              src={currentSong.image || PLACEHOLDER}
+              alt={currentSong.name}
+              className="fullscreen-img"
             />
 
             <div className="fullscreen-title-container">
@@ -468,7 +512,7 @@ function App() {
 
             <div className="fullscreen-controls">
               <SkipBack size={32} onClick={handlePrev} className="control-icon" style={{ opacity: currentSongIndex === 0 ? 0.4 : 1 }} />
-              
+
               <button className="fullscreen-play-btn" onClick={() => playSong(currentSongIndex)}>
                 {songLoading ? (
                   <Loader2 size={28} className="spin-icon" />
