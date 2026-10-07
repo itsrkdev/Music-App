@@ -13,8 +13,8 @@ body {
 .app-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 16px;
-  padding-bottom: 110px; /* Space for bottom player bar */
+  padding: 12px;
+  padding-bottom: 100px;
   min-height: 100vh;
 }
 
@@ -22,13 +22,13 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   font-weight: bold;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   color: #1db954;
 }
 
-/* STICKY VIDEO CARD IMPLEMENTATION */
+/* STICKY TOP VIDEO PLAYER CARD */
 .inline-video-card {
   position: sticky;
   top: 10px;
@@ -36,8 +36,8 @@ body {
   background: #000;
   border-radius: 12px;
   overflow: hidden;
-  margin-bottom: 20px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+  margin-bottom: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.8);
   border: 1px solid #282828;
   display: none;
   transition: all 0.3s ease;
@@ -50,7 +50,7 @@ body {
 .yt-video-box {
   width: 100%;
   aspect-ratio: 16 / 9;
-  max-height: 420px;
+  max-height: 380px;
   background: #000;
 }
 
@@ -61,17 +61,17 @@ body {
 }
 
 .inline-video-meta {
-  padding: 12px 16px;
+  padding: 10px 14px;
   background: #181818;
 }
 
 /* CATEGORIES */
 .filter-container {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   overflow-x: auto;
-  padding-bottom: 12px;
-  margin-bottom: 16px;
+  padding-bottom: 10px;
+  margin-bottom: 14px;
 }
 
 .filter-container::-webkit-scrollbar {
@@ -82,11 +82,11 @@ body {
   background: #282828;
   color: #fff;
   border: none;
-  padding: 8px 16px;
+  padding: 8px 14px;
   border-radius: 20px;
   cursor: pointer;
   white-space: nowrap;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   transition: background 0.2s ease;
 }
 
@@ -96,11 +96,11 @@ body {
   font-weight: bold;
 }
 
-/* SEARCH */
+/* SEARCH BAR */
 .search-form {
   display: flex;
   gap: 8px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .search-input {
@@ -108,9 +108,9 @@ body {
   background: #282828;
   border: 1px solid #3e3e3e;
   border-radius: 24px;
-  padding: 12px 20px;
+  padding: 10px 16px;
   color: #fff;
-  font-size: 1rem;
+  font-size: 0.95rem;
   outline: none;
 }
 
@@ -122,19 +122,20 @@ body {
   background: #1db954;
   border: none;
   border-radius: 50%;
-  width: 46px;
-  height: 46px;
+  width: 42px;
+  height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   color: #000;
+  flex-shrink: 0;
 }
 
-/* STATUS */
+/* STATUS MESSAGES */
 .status-msg {
   text-align: center;
-  margin: 20px 0;
+  margin: 16px 0;
   color: #b3b3b3;
 }
 
@@ -142,68 +143,82 @@ body {
   color: #ff5555;
 }
 
-/* SONGS GRID */
+/* SONGS GRID - MOBILE RESPONSIVE FIX */
 .songs-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(2, 1fr); /* Mobile me 2 Columns */
+  gap: 12px;
+}
+
+@media (min-width: 600px) {
+  .songs-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 900px) {
+  .songs-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 .song-card {
   background: #181818;
   border-radius: 8px;
-  padding: 12px;
+  padding: 10px;
   cursor: pointer;
   transition: background 0.2s ease, transform 0.2s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 .song-card:hover {
   background: #282828;
-  transform: translateY(-4px);
+  transform: translateY(-2px);
 }
 
 .song-card.playing {
-  border: 2px solid #1db954;
+  border: 1.5px solid #1db954;
 }
 
 .song-img {
   width: 100%;
-  aspect-ratio: 1;
+  aspect-ratio: 16 / 9;
   object-fit: cover;
   border-radius: 6px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .song-title {
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .song-artist {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #b3b3b3;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* BOTTOM PLAYER BAR */
+/* BOTTOM PLAYER BAR - TEXT OVERLAP FIX */
 .player-bar {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 80px;
+  height: 72px;
   background: #181818;
   border-top: 1px solid #282828;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 12px;
   z-index: 100;
   cursor: pointer;
 }
@@ -211,25 +226,32 @@ body {
 .player-info {
   display: flex;
   align-items: center;
-  gap: 12px;
-  width: 25%;
-  min-width: 150px;
+  gap: 10px;
+  flex: 1;
+  min-width: 0; /* Important for ellipsis text truncation */
+  padding-right: 8px;
 }
 
 .player-img {
-  width: 52px;
-  height: 52px;
+  width: 46px;
+  height: 46px;
   border-radius: 4px;
   object-fit: cover;
+  flex-shrink: 0;
+}
+
+.player-text {
+  min-width: 0;
+  flex: 1;
 }
 
 .player-controls-desktop {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex: 1;
-  max-width: 500px;
+  max-width: 420px;
 }
 
 .controls-row {
@@ -252,13 +274,14 @@ body {
   background: #fff;
   border: none;
   border-radius: 50%;
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   color: #000;
+  flex-shrink: 0;
 }
 
 .seekbar-row {
@@ -276,18 +299,25 @@ body {
   cursor: pointer;
 }
 
-/* TOGGLE AUDIO/VIDEO BUTTON */
+.player-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .video-toggle-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: 20px;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 18px;
   border: 1px solid #3e3e3e;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .video-toggle-btn.active-video {
@@ -301,16 +331,13 @@ body {
   color: #b3b3b3;
 }
 
-.video-toggle-btn:hover {
-  transform: scale(1.04);
-}
-
 .player-volume-desktop {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 15%;
-  min-width: 100px;
+  width: 120px;
+  flex-shrink: 0;
+  margin-left: 12px;
 }
 
 .volume-input {
@@ -323,7 +350,7 @@ body {
   display: none;
 }
 
-/* FULLSCREEN PLAYER MODAL */
+/* FULLSCREEN PLAYER */
 .fullscreen-player {
   position: fixed;
   inset: 0;
@@ -362,33 +389,33 @@ body {
 }
 
 .fullscreen-img {
-  width: 280px;
-  height: 280px;
+  width: 250px;
+  height: 250px;
   border-radius: 12px;
   object-fit: cover;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.5);
 }
 
 .fullscreen-title-container {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   width: 100%;
 }
 
 .fullscreen-song-title {
-  font-size: 1.4rem;
-  margin-bottom: 6px;
+  font-size: 1.2rem;
+  margin-bottom: 4px;
 }
 
 .fullscreen-song-artist {
   color: #b3b3b3;
-  font-size: 1rem;
+  font-size: 0.9rem;
 }
 
 .fullscreen-seekbar-container {
   width: 100%;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .fullscreen-seekbar {
@@ -400,24 +427,24 @@ body {
 .fullscreen-time {
   display: flex;
   justify-content: space-between;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #b3b3b3;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .fullscreen-controls {
   display: flex;
   align-items: center;
-  gap: 32px;
-  margin-bottom: 24px;
+  gap: 28px;
+  margin-bottom: 20px;
 }
 
 .fullscreen-play-btn {
   background: #1db954;
   border: none;
   border-radius: 50%;
-  width: 60px;
-  height: 60px;
+  width: 56px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -428,7 +455,7 @@ body {
 .fullscreen-volume {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
 }
 
@@ -440,7 +467,7 @@ body {
   100% { transform: rotate(360deg); }
 }
 
-/* RESPONSIVE */
+/* MOBILE MEDIA QUERY */
 @media (max-width: 768px) {
   .player-controls-desktop,
   .player-volume-desktop {
@@ -448,9 +475,5 @@ body {
   }
   .mobile-only-play {
     display: flex;
-  }
-  .player-info {
-    width: auto;
-    flex: 1;
   }
 }
