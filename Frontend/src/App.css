@@ -498,3 +498,118 @@ html, body {
     max-width: 240px;
   }
 }
+/* ======================================================
+   ADD THIS BLOCK TO THE END OF YOUR EXISTING App.css
+   (naye classes hain, purane kisi class se clash nahi karte)
+   ====================================================== */
+
+/* ---- Inline video card (collapses to 0 size in audio mode) ---- */
+.inline-video-card {
+  max-width: 720px;
+  margin: 0 auto;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  border-radius: 16px;
+  transition: height 0.35s ease, opacity 0.3s ease, margin 0.35s ease;
+}
+
+.inline-video-card.visible {
+  height: auto;
+  opacity: 1;
+  margin: 16px auto 28px;
+}
+
+.yt-video-box {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%; /* 16:9 */
+  background: #000;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+/* The YT iframe fills this box regardless of the width/height attrs the
+   YouTube API sets on it — !important overrides the inline style. */
+.yt-video-box iframe {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  border: 0 !important;
+}
+
+/* When the card is collapsed (audio mode), shrink the iframe too so it
+   doesn't sit invisibly on top of other UI. */
+.inline-video-card:not(.visible) .yt-video-box {
+  padding-top: 0;
+  height: 1px;
+}
+
+.inline-video-meta {
+  padding: 14px 18px 2px;
+  text-align: center;
+}
+
+.inline-video-meta .song-title {
+  font-size: 16px;
+  margin: 0;
+}
+
+.inline-video-meta .song-artist {
+  color: #b3b3b3;
+  font-size: 13px;
+  margin: 2px 0 0;
+}
+
+/* ---- Video / Audio toggle button ---- */
+.video-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  color: #e5e5e5;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.video-toggle-btn:hover {
+  border-color: #1db954;
+}
+
+.video-toggle-btn.active {
+  background: #1db954;
+  border-color: #1db954;
+  color: #0b0b0b;
+}
+
+.video-toggle-label {
+  display: inline-block;
+}
+
+/* Smaller, icon-only variant inside the fullscreen header */
+.video-toggle-btn.fullscreen-toggle {
+  padding: 8px;
+  border-radius: 50%;
+}
+
+@media (max-width: 640px) {
+  .video-toggle-label {
+    display: none;
+  }
+  .video-toggle-btn {
+    padding: 8px;
+    border-radius: 50%;
+  }
+}
+
+
+
