@@ -100,190 +100,169 @@ function App() {
 
   const clearLoadTimer = () => clearTimeout(loadTimerRef.current);
 
-let ytApiPromise = null;
+  let ytApiPromise = null;
 
-// YouTube API loader without strict throwing timeout
-function loadYouTubeApi() {
-  return new Promise((resolve) => {
-    // 1. Agar pehle se YouTube API globally ready hai
-    if (window.YT && window.YT.Player) {
-      return resolve(window.YT);
-    }
-
-    // 2. YouTube API ready callback handler setup
-    const existingCallback = window.onYouTubeIframeAPIReady;
-    window.onYouTubeIframeAPIReady = () => {
-      if (typeof existingCallback === 'function') existingCallback();
+  // YouTube API loader without strict throwing timeout
+  function loadYouTubeApi() {
+    return new Promise((resolve) => {
+      // 1. Agar pehle se YouTube API globally ready hai
       if (window.YT && window.YT.Player) {
-        resolve(window.YT);
+        return resolve(window.YT);
+      }
+
+      // 2. YouTube API ready callback handler setup
+      const existingCallback = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        if (typeof existingCallback === 'function') existingCallback();
+        if (window.YT && window.YT.Player) {
+          resolve(window.YT);
+        }
+      };
+
+      // 3. Agar script pehle se document mein nahi hai toh insert karein
+      if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        tag.async = true;
+        document.head.appendChild(tag);
+      }
+
+      // 4. Fallback interval checking (Bina throw kiye resolve hone ka wait karega)
+      const checkYT = setInterval(() => {
+        if (window.YT && window.YT.Player) {
+          clearInterval(checkYT);
+          resolve(window.YT);
+        }
+      }, 200);
+    });
+  }
+
+  // App component ke andar ka main useEffect:
+  useEffect(() => {
+    let cancelled = false;
+
+    loadYouTubeApi().then((YT) => {
+      if (cancelled) return;
+
+      // Direct initialization
+      try {
+        playerRef.current = new YT.Player('yt-player', {
+          height: '100%',
+          width: '100%',
+          playerVars: {
+            playsinline: 1,
+            controls: 1,
+            disablekb: 1,
+            rel: 0,
+            origin: window.location.origin
+          },
+          events: {
+            onReady: () => {
+              if (cancelled) return;
+              readyRef.current = true;
+              apiFailedRef.current = false;
+              setError(''); // API ready hote hi error message hata do
+
+              if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
+                playerRef.current.setVolume(volumeRef.current * 100);
+              }
+
+              if (pendingRef.current) {
+                playerRef.current.loadVideoById(pendingRef.current);
+                pendingRef.current = null;
+              }
+            },
+            onStateChange: (e) => {
+              if (cancelled) return;
+              const S = window.YT.PlayerState;
+              if (e.data === S.PLAYING) {
+                clearLoadTimer();
+                setIsPlaying(true);
+                setSongLoading(false);
+                setDuration(playerRef.current.getDuration() || 0);
+              } else if (e.data === S.PAUSED) {
+                setIsPlaying(false);
+              } else if (e.data === S.BUFFERING) {
+                setSongLoading(true);
+              } else if (e.data === S.CUED) {
+                playerRef.current.playVideo();
+              } else if (e.data === S.ENDED) {
+                setIsPlaying(false);
+                playNextRef.current();
+              }
+            },
+            onError: (e) => {
+              if (cancelled) return;
+              clearLoadTimer();
+              setSongLoading(false);
+              setIsPlaying(false);
+              setError(
+                [101, 150].includes(e.data)
+                  ? 'Is song ka owner embed allow nahi karta. Dusra song try karein.'
+                  : 'Song play nahi ho paya. Dusra song try karein.'
+              );
+            },
+          },
+        });
+      } catch (err) {
+        console.log('Player initialization error:', err);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      clearLoadTimer();
+      try {
+        playerRef.current?.destroy();
+      } catch {
+        /* ignore */
       }
     };
+  }, []);
 
-    // 3. Agar script pehle se document mein nahi hai toh insert karein
-    if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      tag.async = true;
-      document.head.appendChild(tag);
-    }
 
-    // 4. Fallback interval checking (Bina throw kiye resolve hone ka wait karega)
-    const checkYT = setInterval(() => {
-      if (window.YT && window.YT.Player) {
-        clearInterval(checkYT);
-        resolve(window.YT);
-      }
-    }, 200);
-  });
-}
+  // Jab bhi active song badle ya play ho, Media Session setup karein
+  useEffect(() => {
+    const currentSong = songsRef.current[currentSongIndex];
 
-// App component ke andar aapka useEffect:
-
-// App component ke andar ka main useEffect:
-useEffect(() => {
-  let cancelled = false;
-
-  loadYouTubeApi().then((YT) => {
-    if (cancelled) return;
-
-    // Direct initialization
-    try {
-      playerRef.current = new YT.Player('yt-player', {
-        height: '100%',
-        width: '100%',
-        playerVars: {
-          playsinline: 1,
-          controls: 1,
-          disablekb: 1,
-          rel: 0,
-          origin: window.location.origin
-        },
-        events: {
-          onReady: () => {
-            if (cancelled) return;
-            readyRef.current = true;
-            apiFailedRef.current = false;
-            setError(''); // API ready hote hi error message hata do
-            
-            if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
-              playerRef.current.setVolume(volumeRef.current * 100);
-            }
-
-            if (pendingRef.current) {
-              playerRef.current.loadVideoById(pendingRef.current);
-              pendingRef.current = null;
-            }
+    if (currentSong && 'mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentSong.title || 'Unknown Track',
+        artist: currentSong.artist || 'VibeMusic',
+        album: 'VibeMusic Player',
+        artwork: [
+          {
+            src: currentSong.thumbnail || 'https://via.placeholder.com/512',
+            sizes: '512x512',
+            type: 'image/jpeg',
           },
-          onStateChange: (e) => {
-            if (cancelled) return;
-            const S = window.YT.PlayerState;
-            if (e.data === S.PLAYING) {
-              clearLoadTimer();
-              setIsPlaying(true);
-              setSongLoading(false);
-              setDuration(playerRef.current.getDuration() || 0);
-            } else if (e.data === S.PAUSED) {
-              setIsPlaying(false);
-            } else if (e.data === S.BUFFERING) {
-              setSongLoading(true);
-            } else if (e.data === S.CUED) {
-              playerRef.current.playVideo();
-            } else if (e.data === S.ENDED) {
-              setIsPlaying(false);
-              playNextRef.current();
-            }
-          },
-          onError: (e) => {
-            if (cancelled) return;
-            clearLoadTimer();
-            setSongLoading(false);
-            setIsPlaying(false);
-            setError(
-              [101, 150].includes(e.data)
-                ? 'Is song ka owner embed allow nahi karta. Dusra song try karein.'
-                : 'Song play nahi ho paya. Dusra song try karein.'
-            );
-          },
-        },
+        ],
       });
-    } catch (err) {
-      console.log('Player initialization error:', err);
+
+      // Play / Pause Action Handlers for Background Controls
+      navigator.mediaSession.setActionHandler('play', () => {
+        if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
+          playerRef.current.playVideo();
+        }
+      });
+
+      navigator.mediaSession.setActionHandler('pause', () => {
+        if (playerRef.current && typeof playerRef.current.pauseVideo === 'function') {
+          playerRef.current.pauseVideo();
+        }
+      });
+
+      navigator.mediaSession.setActionHandler('previoustrack', () => {
+        playPrev();
+      });
+
+      navigator.mediaSession.setActionHandler('nexttrack', () => {
+        playNext();
+      });
     }
-  });
-
-  return () => {
-    cancelled = true;
-    clearLoadTimer();
-    try {
-      playerRef.current?.destroy();
-    } catch {
-      /* ignore */
-    }
-  };
-}, []);
+  }, [currentSongIndex]);
 
 
-
-  // useEffect(() => {
-  //   let cancelled = false;
-  //   loadYouTubeApi()
-  //     .then((YT) => {
-  //       if (cancelled) return;
-  //       playerRef.current = new YT.Player('yt-player', {
-  //         height: '100%',
-  //         width: '100%',
-  //         playerVars: { playsinline: 1, controls: 1, disablekb: 1, rel: 0, origin: window.location.origin },
-  //         events: {
-  //           onReady: () => {
-  //             readyRef.current = true;
-  //             playerRef.current.setVolume(volumeRef.current * 100);
-  //             if (pendingRef.current) {
-  //               playerRef.current.loadVideoById(pendingRef.current);
-  //               pendingRef.current = null;
-  //             }
-  //           },
-  //           onStateChange: (e) => {
-  //             const S = window.YT.PlayerState;
-  //             if (e.data === S.PLAYING) {
-  //               clearLoadTimer();
-  //               setIsPlaying(true);
-  //               setSongLoading(false);
-  //               setDuration(playerRef.current.getDuration() || 0);
-  //             } else if (e.data === S.PAUSED) {
-  //               setIsPlaying(false);
-  //             } else if (e.data === S.BUFFERING) {
-  //               setSongLoading(true);
-  //             } else if (e.data === S.CUED) {
-  //               playerRef.current.playVideo();
-  //             } else if (e.data === S.ENDED) {
-  //               setIsPlaying(false);
-  //               playNextRef.current();
-  //             }
-  //           },
-  //           onError: (e) => {
-  //             clearLoadTimer();
-  //             setSongLoading(false);
-  //             setIsPlaying(false);
-  //             setError(
-  //               [101, 150].includes(e.data)
-  //                 ? 'Is song ka owner embed allow nahi karta. Dusra song try karein.'
-  //                 : 'Song play nahi ho paya. Dusra song try karein.'
-  //             );
-  //           },
-  //         },
-  //       });
-  //     })
-  //     .catch(() => {
-  //       apiFailedRef.current = true;
-  //       setError(PLAYER_BLOCKED_MSG);
-  //     });
-
-  //   return () => {
-  //     cancelled = true;
-  //     clearLoadTimer();
-  //     try { playerRef.current?.destroy(); } catch { /* ignore */ }
-  //   };
-  // }, []);
 
   useEffect(() => {
     if (!isPlaying) return;
@@ -329,94 +308,50 @@ useEffect(() => {
     fetchSongs(query);
   }, []);
 
-  // const playSong = (index) => {
-  //   const song = songsRef.current[index];
-  //   if (!song) return;
-
-  //   if (apiFailedRef.current) {
-  //     setCurrentSongIndex(index);
-  //     indexRef.current = index;
-  //     setError(PLAYER_BLOCKED_MSG);
-  //     return;
-  //   }
-
-  //   const p = playerRef.current;
-
-  //   if (indexRef.current === index && p && readyRef.current) {
-  //     const state = p.getPlayerState();
-  //     if (state === window.YT.PlayerState.PLAYING) p.pauseVideo();
-  //     else p.playVideo();
-  //     return;
-  //   }
-
-  //   setCurrentSongIndex(index);
-  //   indexRef.current = index;
-  //   setSongLoading(true);
-  //   setIsPlaying(false);
-  //   setCurrentTime(0);
-  //   setDuration(0);
-  //   setError('');
-
-  //   clearLoadTimer();
-  //   loadTimerRef.current = setTimeout(() => {
-  //     setSongLoading(false);
-  //     setError(
-  //       readyRef.current
-  //         ? 'Song start nahi ho paya. Play button dobara dabao ya dusra song try karein.'
-  //         : PLAYER_BLOCKED_MSG
-  //     );
-  //   }, 12000);
-
-  //   if (p && readyRef.current) {
-  //     p.loadVideoById(song.id);
-  //   } else {
-  //     pendingRef.current = song.id;
-  //   }
-  // };
 
   const playSong = (index) => {
-  const song = songsRef.current[index];
-  if (!song) return;
+    const song = songsRef.current[index];
+    if (!song) return;
 
-  if (apiFailedRef.current) {
+    if (apiFailedRef.current) {
+      setCurrentSongIndex(index);
+      indexRef.current = index;
+      setError(PLAYER_BLOCKED_MSG);
+      return;
+    }
+
+    const p = playerRef.current;
+
+    if (indexRef.current === index && p && readyRef.current) {
+      try {
+        const state = p.getPlayerState();
+        if (state === window.YT.PlayerState.PLAYING) p.pauseVideo();
+        else p.playVideo();
+      } catch (e) {
+        /* ignore */
+      }
+      return;
+    }
+
     setCurrentSongIndex(index);
     indexRef.current = index;
-    setError(PLAYER_BLOCKED_MSG);
-    return;
-  }
+    setSongLoading(true);
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+    setError('');
 
-  const p = playerRef.current;
+    clearLoadTimer();
 
-  if (indexRef.current === index && p && readyRef.current) {
-    try {
-      const state = p.getPlayerState();
-      if (state === window.YT.PlayerState.PLAYING) p.pauseVideo();
-      else p.playVideo();
-    } catch (e) {
-      /* ignore */
+    // 12-second setTimeout ko poori tarah hata diya gaya hai
+    // ab error automatic 12 sec baad nahi aayega.
+
+    if (p && readyRef.current) {
+      p.loadVideoById(song.id);
+    } else {
+      pendingRef.current = song.id;
     }
-    return;
-  }
-
-  setCurrentSongIndex(index);
-  indexRef.current = index;
-  setSongLoading(true);
-  setIsPlaying(false);
-  setCurrentTime(0);
-  setDuration(0);
-  setError('');
-
-  clearLoadTimer();
-
-  // 12-second setTimeout ko poori tarah hata diya gaya hai
-  // ab error automatic 12 sec baad nahi aayega.
-
-  if (p && readyRef.current) {
-    p.loadVideoById(song.id);
-  } else {
-    pendingRef.current = song.id;
-  }
-};
+  };
 
   const handleNext = (e) => {
     if (e) e.stopPropagation();
@@ -599,15 +534,6 @@ useEffect(() => {
               </>
             )}
           </button>
-          {/* <button
-            className={`video-toggle-btn ${showVideo ? 'active-video' : 'active-audio'}`}
-            onClick={toggleVideoMode}
-            title={showVideo ? 'Audio-only Mode par switch karein' : 'Video Mode par switch karein'}
-          >
-            {showVideo ?  <Video size={18}  /> : <Headphones size={18} />}
-            
-            <span className="video-toggle-label">{showVideo ? 'Video Mode' : 'Audio Mode'}</span>
-          </button> */}
 
           <div className="player-volume-desktop" onClick={(e) => e.stopPropagation()}>
             {volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
