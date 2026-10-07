@@ -80,7 +80,7 @@ function App() {
   const [songLoading, setSongLoading] = useState(false);
   const [error, setError] = useState('');
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const [showVideo, setShowVideo] = useState(false);
+  const [showVideo, setShowVideo] = useState(false); // Audio vs Video mode toggle
 
   const playerRef = useRef(null);
   const readyRef = useRef(false);
@@ -302,7 +302,7 @@ function App() {
         <span>VibeMusic App</span>
       </header>
 
-      {/* STICKY TOP VIDEO PLAYER */}
+      {/* STICKY TOP PLAYER CONTAINER */}
       <div className={`inline-video-card ${currentSong && showVideo ? 'visible' : ''}`}>
         <div className="yt-video-box">
           <div id="yt-player" />
@@ -350,32 +350,25 @@ function App() {
 
       {/* Songs Grid */}
       <div className="songs-grid">
-        {songs.map((song, index) => {
-          // Video Mode ON hone par jo song abhi play ho rha hai uski card hide rahegi
-          if (showVideo && currentSongIndex === index) {
-            return null;
-          }
-
-          return (
-            <div
-              key={song.id || index}
-              className={`song-card ${currentSongIndex === index ? 'playing' : ''}`}
-              onClick={() => playSong(index)}
-            >
-              <img
-                src={song.image || PLACEHOLDER}
-                alt={song.name}
-                className="song-img"
-                onError={(e) => {
-                  e.currentTarget.onerror = null;
-                  e.currentTarget.src = PLACEHOLDER;
-                }}
-              />
-              <h4 className="song-title">{song.name}</h4>
-              <p className="song-artist">{song.artist}</p>
-            </div>
-          );
-        })}
+        {songs.map((song, index) => (
+          <div
+            key={song.id || index}
+            className={`song-card ${currentSongIndex === index ? 'playing' : ''}`}
+            onClick={() => playSong(index)}
+          >
+            <img
+              src={song.image || PLACEHOLDER}
+              alt={song.name}
+              className="song-img"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = PLACEHOLDER;
+              }}
+            />
+            <h4 className="song-title">{song.name}</h4>
+            <p className="song-artist">{song.artist}</p>
+          </div>
+        ))}
       </div>
 
       {/* Bottom Mini Player Bar */}
@@ -419,31 +412,15 @@ function App() {
             </div>
           </div>
 
-          <div className="player-actions">
-            {/* AUDIO / VIDEO TOGGLE BUTTON */}
-            <button
-              className={`video-toggle-btn ${showVideo ? 'active-video' : 'active-audio'}`}
-              onClick={toggleVideoMode}
-              title={showVideo ? 'Audio Mode par switch karein' : 'Video Mode par switch karein'}
-            >
-              {showVideo ? <Video size={16} /> : <Headphones size={16} />}
-              <span className="video-toggle-label">{showVideo ? 'Video' : 'Audio'}</span>
-            </button>
-
-            {/* Mobile Only Control Button */}
-            <button
-              className="player-play-btn mobile-only-play"
-              onClick={(e) => { e.stopPropagation(); playSong(currentSongIndex); }}
-            >
-              {songLoading ? (
-                <Loader2 size={18} className="spin-icon" />
-              ) : isPlaying ? (
-                <Pause size={18} />
-              ) : (
-                <Play size={18} />
-              )}
-            </button>
-          </div>
+          {/* AUDIO / VIDEO TOGGLE BUTTON */}
+          <button
+            className={`video-toggle-btn ${showVideo ? 'active-video' : 'active-audio'}`}
+            onClick={toggleVideoMode}
+            title={showVideo ? 'Audio-only Mode par switch karein' : 'Video Mode par switch karein'}
+          >
+            {showVideo ? <Video size={18} /> : <Headphones size={18} />}
+            <span className="video-toggle-label">{showVideo ? 'Video Mode' : 'Audio Mode'}</span>
+          </button>
 
           <div className="player-volume-desktop" onClick={(e) => e.stopPropagation()}>
             {volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
@@ -457,6 +434,20 @@ function App() {
               className="volume-input"
             />
           </div>
+
+          {/* Mobile Only Control Button */}
+          <button
+            className="player-play-btn mobile-only-play"
+            onClick={(e) => { e.stopPropagation(); playSong(currentSongIndex); }}
+          >
+            {songLoading ? (
+              <Loader2 size={18} className="spin-icon" />
+            ) : isPlaying ? (
+              <Pause size={18} />
+            ) : (
+              <Play size={18} />
+            )}
+          </button>
         </div>
       )}
 
