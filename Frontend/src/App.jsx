@@ -91,7 +91,8 @@ function App() {
   const indexRef = useRef(null);
   const volumeRef = useRef(0.5);
   const searchIdRef = useRef(0);
-  const playNextRef = useRef(() => {});
+  const playNextRef = useRef(() => { });
+  const [isVideoMode, setIsVideoMode] = useState(true);
 
   useEffect(() => { songsRef.current = songs; }, [songs]);
   useEffect(() => { indexRef.current = currentSongIndex; }, [currentSongIndex]);
@@ -416,11 +417,29 @@ function App() {
           <button
             className={`video-toggle-btn ${showVideo ? 'active-video' : 'active-audio'}`}
             onClick={toggleVideoMode}
+            title={showVideo ? 'Switch to Audio' : 'Switch to Video'}
+          >
+            {showVideo ? (
+              <>
+                <Video size={18} color="#1db954" />
+                <span className="video-toggle-label">Video ON</span>
+              </>
+            ) : (
+              <>
+                <Headphones size={18} color="#b3b3b3" />
+                <span className="video-toggle-label">Audio ON</span>
+              </>
+            )}
+          </button>
+          {/* <button
+            className={`video-toggle-btn ${showVideo ? 'active-video' : 'active-audio'}`}
+            onClick={toggleVideoMode}
             title={showVideo ? 'Audio-only Mode par switch karein' : 'Video Mode par switch karein'}
           >
-            {showVideo ? <Video size={18} /> : <Headphones size={18} />}
+            {showVideo ?  <Video size={18}  /> : <Headphones size={18} />}
+            
             <span className="video-toggle-label">{showVideo ? 'Video Mode' : 'Audio Mode'}</span>
-          </button>
+          </button> */}
 
           <div className="player-volume-desktop" onClick={(e) => e.stopPropagation()}>
             {volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
@@ -467,6 +486,7 @@ function App() {
               }}
             >
               {showVideo ? <Video size={20} /> : <Headphones size={20} />}
+
             </button>
           </div>
 
