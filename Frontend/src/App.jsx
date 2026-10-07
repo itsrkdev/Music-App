@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import './App.css';
 
-const API = import.meta.env.VITE_API_URL ;
+const API = (import.meta.env.VITE_API_URL || 'https://music-app-mxgg.onrender.com').replace(/\/+$/, '');
 
 const PLACEHOLDER =
   'data:image/svg+xml;utf8,' +
@@ -100,66 +100,210 @@ function App() {
 
   const clearLoadTimer = () => clearTimeout(loadTimerRef.current);
 
-  useEffect(() => {
-    let cancelled = false;
-    loadYouTubeApi()
-      .then((YT) => {
-        if (cancelled) return;
-        playerRef.current = new YT.Player('yt-player', {
-          height: '100%',
-          width: '100%',
-          playerVars: { playsinline: 1, controls: 1, disablekb: 1, rel: 0, origin: window.location.origin },
-          events: {
-            onReady: () => {
-              readyRef.current = true;
+let ytApiPromise = null;
+
+function loadYouTubeApi() {
+  if (window.YT && window.YT.Player) return Promise.resolve(window.YT);
+  if (ytApiPromise) return ytApiPromise;
+
+  ytApiPromise = new Promise((resolve, reject) => {
+    // Agar script pehle se index.html me hai ya add ho chuka hai
+    if (window.YT && window.YT.Player) {
+      return resolve(window.YT);
+    }
+
+    // YouTube API global callback handler setup
+    const prevCallback = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      if (prevCallback) prevCallback();
+      if (window.YT && window.YT.Player) resolve(window.YT);
+    };
+
+    if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      tag.async = true;
+      tag.onerror = () => {
+        ytApiPromise = null;
+        reject(new Error('YT API blocked'));
+      };
+      document.head.appendChild(tag);
+    }
+
+    // Interval checking for fallback
+    const checkYT = setInterval(() => {
+      if (window.YT && window.YT.Player) {
+        clearInterval(checkYT);
+        resolve(window.YT);
+      }
+    }, 100);
+
+    // Timeout increase to 15s for slow mobile networks
+    setTimeout(() => {
+      clearInterval(checkYT);
+      if (window.YT && window.YT.Player) {
+        resolve(window.YT);
+      } else {
+        ytApiPromise = null;
+        reject(new Error('YT API timeout'));
+      }
+    }, 15000);
+  });
+
+  return ytApiPromise;
+}
+
+// App component ke andar aapka useEffect:
+useEffect(() => {
+  let cancelled = false;
+
+  loadYouTubeApi()
+    .then((YT) => {
+      if (cancelled) return;
+
+      // Ensure 'yt-player' div is present in DOM before creating player
+      const container = document.getElementById('yt-player');
+      if (!container) return;
+
+      playerRef.current = new YT.Player('yt-player', {
+        height: '100%',
+        width: '100%',
+        playerVars: {
+          playsinline: 1,
+          controls: 1,
+          disablekb: 1,
+          rel: 0,
+          origin: window.location.origin
+        },
+        events: {
+          onReady: () => {
+            if (cancelled) return;
+            readyRef.current = true;
+            apiFailedRef.current = false;
+            setError(''); // Load success par error clear karein
+            
+            if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
               playerRef.current.setVolume(volumeRef.current * 100);
-              if (pendingRef.current) {
-                playerRef.current.loadVideoById(pendingRef.current);
-                pendingRef.current = null;
-              }
-            },
-            onStateChange: (e) => {
-              const S = window.YT.PlayerState;
-              if (e.data === S.PLAYING) {
-                clearLoadTimer();
-                setIsPlaying(true);
-                setSongLoading(false);
-                setDuration(playerRef.current.getDuration() || 0);
-              } else if (e.data === S.PAUSED) {
-                setIsPlaying(false);
-              } else if (e.data === S.BUFFERING) {
-                setSongLoading(true);
-              } else if (e.data === S.CUED) {
-                playerRef.current.playVideo();
-              } else if (e.data === S.ENDED) {
-                setIsPlaying(false);
-                playNextRef.current();
-              }
-            },
-            onError: (e) => {
-              clearLoadTimer();
-              setSongLoading(false);
-              setIsPlaying(false);
-              setError(
-                [101, 150].includes(e.data)
-                  ? 'Is song ka owner embed allow nahi karta. Dusra song try karein.'
-                  : 'Song play nahi ho paya. Dusra song try karein.'
-              );
-            },
+            }
+
+            if (pendingRef.current) {
+              playerRef.current.loadVideoById(pendingRef.current);
+              pendingRef.current = null;
+            }
           },
-        });
-      })
-      .catch(() => {
+          onStateChange: (e) => {
+            if (cancelled) return;
+            const S = window.YT.PlayerState;
+            if (e.data === S.PLAYING) {
+              clearLoadTimer();
+              setIsPlaying(true);
+              setSongLoading(false);
+              setDuration(playerRef.current.getDuration() || 0);
+            } else if (e.data === S.PAUSED) {
+              setIsPlaying(false);
+            } else if (e.data === S.BUFFERING) {
+              setSongLoading(true);
+            } else if (e.data === S.CUED) {
+              playerRef.current.playVideo();
+            } else if (e.data === S.ENDED) {
+              setIsPlaying(false);
+              playNextRef.current();
+            }
+          },
+          onError: (e) => {
+            if (cancelled) return;
+            clearLoadTimer();
+            setSongLoading(false);
+            setIsPlaying(false);
+            setError(
+              [101, 150].includes(e.data)
+                ? 'Is song ka owner embed allow nahi karta. Dusra song try karein.'
+                : 'Song play nahi ho paya. Dusra song try karein.'
+            );
+          },
+        },
+      });
+    })
+    .catch(() => {
+      if (!cancelled) {
         apiFailedRef.current = true;
         setError(PLAYER_BLOCKED_MSG);
-      });
+      }
+    });
 
-    return () => {
-      cancelled = true;
-      clearLoadTimer();
-      try { playerRef.current?.destroy(); } catch { /* ignore */ }
-    };
-  }, []);
+  return () => {
+    cancelled = true;
+    clearLoadTimer();
+    try {
+      playerRef.current?.destroy();
+    } catch {
+      /* ignore */
+    }
+  };
+}, []);
+
+
+
+  // useEffect(() => {
+  //   let cancelled = false;
+  //   loadYouTubeApi()
+  //     .then((YT) => {
+  //       if (cancelled) return;
+  //       playerRef.current = new YT.Player('yt-player', {
+  //         height: '100%',
+  //         width: '100%',
+  //         playerVars: { playsinline: 1, controls: 1, disablekb: 1, rel: 0, origin: window.location.origin },
+  //         events: {
+  //           onReady: () => {
+  //             readyRef.current = true;
+  //             playerRef.current.setVolume(volumeRef.current * 100);
+  //             if (pendingRef.current) {
+  //               playerRef.current.loadVideoById(pendingRef.current);
+  //               pendingRef.current = null;
+  //             }
+  //           },
+  //           onStateChange: (e) => {
+  //             const S = window.YT.PlayerState;
+  //             if (e.data === S.PLAYING) {
+  //               clearLoadTimer();
+  //               setIsPlaying(true);
+  //               setSongLoading(false);
+  //               setDuration(playerRef.current.getDuration() || 0);
+  //             } else if (e.data === S.PAUSED) {
+  //               setIsPlaying(false);
+  //             } else if (e.data === S.BUFFERING) {
+  //               setSongLoading(true);
+  //             } else if (e.data === S.CUED) {
+  //               playerRef.current.playVideo();
+  //             } else if (e.data === S.ENDED) {
+  //               setIsPlaying(false);
+  //               playNextRef.current();
+  //             }
+  //           },
+  //           onError: (e) => {
+  //             clearLoadTimer();
+  //             setSongLoading(false);
+  //             setIsPlaying(false);
+  //             setError(
+  //               [101, 150].includes(e.data)
+  //                 ? 'Is song ka owner embed allow nahi karta. Dusra song try karein.'
+  //                 : 'Song play nahi ho paya. Dusra song try karein.'
+  //             );
+  //           },
+  //         },
+  //       });
+  //     })
+  //     .catch(() => {
+  //       apiFailedRef.current = true;
+  //       setError(PLAYER_BLOCKED_MSG);
+  //     });
+
+  //   return () => {
+  //     cancelled = true;
+  //     clearLoadTimer();
+  //     try { playerRef.current?.destroy(); } catch { /* ignore */ }
+  //   };
+  // }, []);
 
   useEffect(() => {
     if (!isPlaying) return;
