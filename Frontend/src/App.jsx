@@ -329,50 +329,94 @@ useEffect(() => {
     fetchSongs(query);
   }, []);
 
+  // const playSong = (index) => {
+  //   const song = songsRef.current[index];
+  //   if (!song) return;
+
+  //   if (apiFailedRef.current) {
+  //     setCurrentSongIndex(index);
+  //     indexRef.current = index;
+  //     setError(PLAYER_BLOCKED_MSG);
+  //     return;
+  //   }
+
+  //   const p = playerRef.current;
+
+  //   if (indexRef.current === index && p && readyRef.current) {
+  //     const state = p.getPlayerState();
+  //     if (state === window.YT.PlayerState.PLAYING) p.pauseVideo();
+  //     else p.playVideo();
+  //     return;
+  //   }
+
+  //   setCurrentSongIndex(index);
+  //   indexRef.current = index;
+  //   setSongLoading(true);
+  //   setIsPlaying(false);
+  //   setCurrentTime(0);
+  //   setDuration(0);
+  //   setError('');
+
+  //   clearLoadTimer();
+  //   loadTimerRef.current = setTimeout(() => {
+  //     setSongLoading(false);
+  //     setError(
+  //       readyRef.current
+  //         ? 'Song start nahi ho paya. Play button dobara dabao ya dusra song try karein.'
+  //         : PLAYER_BLOCKED_MSG
+  //     );
+  //   }, 12000);
+
+  //   if (p && readyRef.current) {
+  //     p.loadVideoById(song.id);
+  //   } else {
+  //     pendingRef.current = song.id;
+  //   }
+  // };
+
   const playSong = (index) => {
-    const song = songsRef.current[index];
-    if (!song) return;
+  const song = songsRef.current[index];
+  if (!song) return;
 
-    if (apiFailedRef.current) {
-      setCurrentSongIndex(index);
-      indexRef.current = index;
-      setError(PLAYER_BLOCKED_MSG);
-      return;
-    }
+  if (apiFailedRef.current) {
+    setCurrentSongIndex(index);
+    indexRef.current = index;
+    setError(PLAYER_BLOCKED_MSG);
+    return;
+  }
 
-    const p = playerRef.current;
+  const p = playerRef.current;
 
-    if (indexRef.current === index && p && readyRef.current) {
+  if (indexRef.current === index && p && readyRef.current) {
+    try {
       const state = p.getPlayerState();
       if (state === window.YT.PlayerState.PLAYING) p.pauseVideo();
       else p.playVideo();
-      return;
+    } catch (e) {
+      /* ignore */
     }
+    return;
+  }
 
-    setCurrentSongIndex(index);
-    indexRef.current = index;
-    setSongLoading(true);
-    setIsPlaying(false);
-    setCurrentTime(0);
-    setDuration(0);
-    setError('');
+  setCurrentSongIndex(index);
+  indexRef.current = index;
+  setSongLoading(true);
+  setIsPlaying(false);
+  setCurrentTime(0);
+  setDuration(0);
+  setError('');
 
-    clearLoadTimer();
-    loadTimerRef.current = setTimeout(() => {
-      setSongLoading(false);
-      setError(
-        readyRef.current
-          ? 'Song start nahi ho paya. Play button dobara dabao ya dusra song try karein.'
-          : PLAYER_BLOCKED_MSG
-      );
-    }, 12000);
+  clearLoadTimer();
 
-    if (p && readyRef.current) {
-      p.loadVideoById(song.id);
-    } else {
-      pendingRef.current = song.id;
-    }
-  };
+  // 12-second setTimeout ko poori tarah hata diya gaya hai
+  // ab error automatic 12 sec baad nahi aayega.
+
+  if (p && readyRef.current) {
+    p.loadVideoById(song.id);
+  } else {
+    pendingRef.current = song.id;
+  }
+};
 
   const handleNext = (e) => {
     if (e) e.stopPropagation();
