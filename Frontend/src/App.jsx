@@ -102,69 +102,52 @@ function App() {
 
 let ytApiPromise = null;
 
+// YouTube API loader without strict throwing timeout
 function loadYouTubeApi() {
-  if (window.YT && window.YT.Player) return Promise.resolve(window.YT);
-  if (ytApiPromise) return ytApiPromise;
-
-  ytApiPromise = new Promise((resolve, reject) => {
-    // Agar script pehle se index.html me hai ya add ho chuka hai
+  return new Promise((resolve) => {
+    // 1. Agar pehle se YouTube API globally ready hai
     if (window.YT && window.YT.Player) {
       return resolve(window.YT);
     }
 
-    // YouTube API global callback handler setup
-    const prevCallback = window.onYouTubeIframeAPIReady;
+    // 2. YouTube API ready callback handler setup
+    const existingCallback = window.onYouTubeIframeAPIReady;
     window.onYouTubeIframeAPIReady = () => {
-      if (prevCallback) prevCallback();
-      if (window.YT && window.YT.Player) resolve(window.YT);
+      if (typeof existingCallback === 'function') existingCallback();
+      if (window.YT && window.YT.Player) {
+        resolve(window.YT);
+      }
     };
 
-    if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+    // 3. Agar script pehle se document mein nahi hai toh insert karein
+    if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
       const tag = document.createElement('script');
       tag.src = 'https://www.youtube.com/iframe_api';
       tag.async = true;
-      tag.onerror = () => {
-        ytApiPromise = null;
-        reject(new Error('YT API blocked'));
-      };
       document.head.appendChild(tag);
     }
 
-    // Interval checking for fallback
+    // 4. Fallback interval checking (Bina throw kiye resolve hone ka wait karega)
     const checkYT = setInterval(() => {
       if (window.YT && window.YT.Player) {
         clearInterval(checkYT);
         resolve(window.YT);
       }
-    }, 100);
-
-    // Timeout increase to 15s for slow mobile networks
-    setTimeout(() => {
-      clearInterval(checkYT);
-      if (window.YT && window.YT.Player) {
-        resolve(window.YT);
-      } else {
-        ytApiPromise = null;
-        reject(new Error('YT API timeout'));
-      }
-    }, 15000);
+    }, 200);
   });
-
-  return ytApiPromise;
 }
 
 // App component ke andar aapka useEffect:
+
+// App component ke andar ka main useEffect:
 useEffect(() => {
   let cancelled = false;
 
-  loadYouTubeApi()
-    .then((YT) => {
-      if (cancelled) return;
+  loadYouTubeApi().then((YT) => {
+    if (cancelled) return;
 
-      // Ensure 'yt-player' div is present in DOM before creating player
-      const container = document.getElementById('yt-player');
-      if (!container) return;
-
+    // Direct initialization
+    try {
       playerRef.current = new YT.Player('yt-player', {
         height: '100%',
         width: '100%',
@@ -180,7 +163,7 @@ useEffect(() => {
             if (cancelled) return;
             readyRef.current = true;
             apiFailedRef.current = false;
-            setError(''); // Load success par error clear karein
+            setError(''); // API ready hote hi error message hata do
             
             if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
               playerRef.current.setVolume(volumeRef.current * 100);
@@ -223,13 +206,10 @@ useEffect(() => {
           },
         },
       });
-    })
-    .catch(() => {
-      if (!cancelled) {
-        apiFailedRef.current = true;
-        setError(PLAYER_BLOCKED_MSG);
-      }
-    });
+    } catch (err) {
+      console.log('Player initialization error:', err);
+    }
+  });
 
   return () => {
     cancelled = true;
