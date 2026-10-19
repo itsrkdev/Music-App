@@ -403,7 +403,7 @@ function App() {
     <div className="app-container">
       <header className="app-header">
         <Music size={26} />
-        <span>VibeMusic App</span>
+        <span>Rk~Music App</span>
       </header>
 
       {/* STICKY TOP PLAYER CONTAINER */}
